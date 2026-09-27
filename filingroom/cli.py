@@ -83,6 +83,10 @@ def main() -> None:
     p.add_argument("--companies", help="comma-separated tickers (default: tuning set, or all with --final)")
     _model_args(p)
 
+    p = sub.add_parser("ui", help="local web UI on 127.0.0.1 (only this Mac can reach it)")
+    p.add_argument("--port", type=int, default=8787)
+    p.add_argument("--no-open", action="store_true", help="don't open a browser tab")
+
     p = sub.add_parser("retrieval", help="LLM-free check: is the golden number in the top-k chunks?")
     p.add_argument("--final", action="store_true")
     p.add_argument("--k", type=int, default=answer.DEFAULT_K)
@@ -176,6 +180,10 @@ def main() -> None:
             return
         evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model, label=a.label,
                      note=a.note, workers=a.workers, use_judge=not a.no_judge)
+
+    elif a.cmd == "ui":
+        from . import server
+        server.serve(a.port, open_browser=not a.no_open)
 
     elif a.cmd == "retrieval":
         evaluate.retrieval_check(evaluate.eval_tickers(a.final), a.k, a.expand)
