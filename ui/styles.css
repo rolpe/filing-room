@@ -96,6 +96,14 @@ code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
 .co strong { font-weight: 650; color: var(--ink); }
 .co:hover { color: var(--ink); background: var(--bg-hover); }
 .co.is-on { background: var(--bg); box-shadow: 0 1px 2px rgb(21 24 30 / 0.1), 0 0 0 1px var(--line); color: var(--ink); }
+.cos__sep { width: 1px; background: var(--line-strong); margin: 6px 4px; }
+.add-co {
+  display: inline-flex; align-items: center; gap: 5px; margin-left: -12px;
+  padding: 6px 10px; border-radius: 7px; font-size: 13px; font-weight: 550; white-space: nowrap;
+  color: var(--accent); text-decoration: none;
+}
+.add-co:hover, .add-co.is-on { background: var(--accent-bg); color: var(--accent-ink); }
+.add-co .icon { width: 14px; height: 14px; }
 .tabs { display: flex; align-items: stretch; height: var(--top-h); gap: 2px; }
 .tab {
   display: flex; align-items: center; padding: 0 11px; white-space: nowrap;
@@ -412,6 +420,41 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .ask__cost strong { color: var(--bad); font-weight: 600; }
 .ask__examples { color: var(--ink-3); line-height: 1.6; }
 
+/* ---------------------------------------------------------------- add a company */
+
+.add { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 28px; align-items: start; margin-bottom: 36px; }
+.add__find .search { padding: 0 0 10px; }
+.co-results { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.co-hit {
+  width: 100%; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: baseline; text-align: left;
+  font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 0; border-radius: var(--r-sm);
+  padding: 9px 10px; cursor: pointer;
+}
+.co-hit:hover { background: var(--bg-hover); }
+.co-hit.is-active { background: var(--accent-bg); }
+.co-hit span { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-preview { display: grid; gap: 16px; padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--r-md); animation: enter 180ms var(--ease); }
+.co-preview h2 { font-size: 20px; font-weight: 650; }
+.co-preview h2 .muted { font-weight: 500; font-size: 15px; margin-left: 4px; }
+.add__filings { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13.5px; color: var(--ink-2); }
+.add__filings .num { font-weight: 650; color: var(--ink); }
+.add__action { display: grid; gap: 10px; padding-top: 4px; border-top: 1px solid var(--line); padding-top: 16px; }
+.add__action > p, .add__cost { font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+.add__go { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.add__confirm { width: 100%; font-size: 14px; }
+.add__no { display: flex; gap: 8px; align-items: flex-start; color: var(--warn); font-size: 14px; max-width: 70ch; }
+.add__no .icon { margin-top: 2px; }
+.stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.stage { display: flex; gap: 10px; align-items: center; font-size: 14.5px; }
+.stage--done { color: var(--ink-2); }
+.stage--done .icon { color: var(--ok); }
+.stage--now { font-weight: 600; }
+.stage--todo { color: var(--ink-3); }
+.stage--failed { color: var(--bad); }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent-bg-strong); border-top-color: var(--accent); animation: spin 800ms linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.mine > h2 { font-size: 16px; font-weight: 650; margin-bottom: 12px; }
+
 /* ---------------------------------------------------------------- empty states */
 
 .empty { display: grid; justify-items: start; gap: 8px; padding: 36px 4px; color: var(--ink-3); max-width: 60ch; }
@@ -454,4 +497,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   .filing__head { flex-wrap: wrap; }
   .filing__section { max-width: 100%; white-space: normal; }
   .g-item { grid-template-columns: 1fr; gap: 10px; }
+  .add { grid-template-columns: minmax(0, 1fr); }
+  .add-co { margin-left: 0; }
 }

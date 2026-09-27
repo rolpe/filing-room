@@ -6,13 +6,13 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from . import answer, checklist, config, edgar, evaluate, golden, index, llm, memo, parse, report
+from . import answer, checklist, config, edgar, evaluate, golden, index, llm, memo, parse, pipeline, report
 
 
 def _tickers(arg: str, final: bool, allow_holdout: bool = False) -> list[str]:
     cos = config.companies()
     if arg.lower() == "all":
-        return [t for t, c in cos.items() if final or c["split"] == "tune"]
+        return [t for t, c in cos.items() if c["split"] == "tune" or (final and c["split"] == "holdout")]
     t = config.company(arg)["ticker"]
     if cos[t]["split"] == "holdout" and not (final or allow_holdout):
         sys.exit(f"{t} is the held-out company. Pass --final to use it (only for the final report).")
@@ -40,6 +40,9 @@ def main() -> None:
         p = sub.add_parser(name, help=help_)
         p.add_argument("ticker", help="ticker or 'all'")
         p.add_argument("--final", action="store_true", help="include the held-out company in 'all'")
+
+    p = sub.add_parser("add", help="add any SEC-registered company (free): check eligibility, fetch, parse, index")
+    p.add_argument("ticker")
 
     p = sub.add_parser("golden", help="rebuild golden/golden.jsonl from XBRL + golden/manual.jsonl")
     p.add_argument("--final", action="store_true")
@@ -104,6 +107,15 @@ def main() -> None:
             if a.cmd in ("index", "build"):
                 index.build_index(t)
 
+    elif a.cmd == "add":
+        pv = pipeline.preview(a.ticker)
+        print(f"{pv['ticker']} · {pv['name']} · {pv['sic'] or 'industry n/a'} · fiscal year ends {pv['fiscal_year_end']}")
+        if not pv["eligible"]:
+            sys.exit(pv["reason"])
+        pipeline.register(pv["ticker"])
+        pipeline.build(pv["ticker"])
+        print(f"Added {pv['ticker']}. Answer its checklist with: ./fr run {pv['ticker']}  (~${pipeline.RUN_ESTIMATE_USD:.2f})")
+
     elif a.cmd == "golden":
         items = golden.build(evaluate.eval_tickers(a.final))
         (config.ROOT / "golden" / "REVIEW.md").write_text(golden.review_sheet())
@@ -129,20 +141,14 @@ def main() -> None:
 
     elif a.cmd == "run":
         t = _tickers(a.ticker, a.final)[0]
-        ix, meter = index.Index(t), llm.CostMeter()
-        qs = checklist.load()
-        print(f"answering {len(qs)} questions for {t} with {a.model} ...")
-        with ThreadPoolExecutor(max_workers=a.workers) as pool:
-            rows = list(pool.map(lambda q: answer.answer_question(t, q, ix, meter, model=a.model,
-                                                                  effort=_effort(a.effort), k=a.k, expand=a.expand), qs))
-        stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
-        meta = {"timestamp": stamp, "model": a.model, "cost_usd": meter.cost(),
-                "n_filings": len(edgar.manifest(t)), "usage": meter.summary()}
-        config.RUNS.mkdir(exist_ok=True)
-        (config.RUNS / f"{t}_{stamp}.json").write_text(json.dumps({"meta": meta, "answers": rows}, indent=1))
-        (config.RUNS / f"{t}_{stamp}.md").write_text(report.checklist_md(t, rows, meta))
-        counts = {s: sum(r["status"] == s for r in rows) for s in ("answered", "not_found", "unsupported", "error")}
-        print(f"{counts} · ${meter.cost():.2f} -> runs/{t}_{stamp}.md")
+        meter = llm.CostMeter()
+        print(f"answering {len(checklist.load())} questions for {t} with {a.model} ...")
+        path = pipeline.run_checklist(t, meter, model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand,
+                                      workers=a.workers)
+        data = json.loads(path.read_text())
+        counts = {s: sum(r["status"] == s for r in data["answers"]) for s in ("answered", "not_found", "unsupported", "error")}
+        nc = data["meta"]["number_check"]
+        print(f"{counts} · numbers matching SEC data: {nc['matched']}/{nc['checked']} · ${meter.cost():.2f} -> {path.with_suffix('.md').relative_to(config.ROOT)}")
 
     elif a.cmd == "memo":
         t = _tickers(a.ticker, a.final)[0]

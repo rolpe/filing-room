@@ -32,7 +32,7 @@ CHANGELOG = config.ROOT / "CHANGELOG-evals.md"
 
 
 def eval_tickers(final: bool) -> list[str]:
-    return [t for t, c in config.companies().items() if final or c["split"] == "tune"]
+    return [t for t, c in config.companies().items() if c["split"] == "tune" or (final and c["split"] == "holdout")]
 
 
 # ---------------------------------------------------------------- grading

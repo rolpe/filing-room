@@ -15,6 +15,7 @@ PROMPTS = ROOT / "prompts"
 CHECKLIST = ROOT / "checklist" / "checklist.json"
 GOLDEN = ROOT / "golden" / "golden.jsonl"
 COMPANIES = ROOT / "config" / "companies.json"
+USER_COMPANIES = DATA / "companies_user.json"  # added from the UI or `./fr add`; never part of evals
 
 
 def load_env() -> None:
@@ -43,7 +44,19 @@ def edgar_user_agent() -> str:
 
 
 def companies() -> dict[str, dict]:
-    return {c["ticker"]: c for c in json.loads(COMPANIES.read_text())}
+    cos = {c["ticker"]: c for c in json.loads(COMPANIES.read_text())}
+    if USER_COMPANIES.exists():
+        for c in json.loads(USER_COMPANIES.read_text()):
+            cos.setdefault(c["ticker"], c)
+    return cos
+
+
+def add_user_company(entry: dict) -> None:
+    rows = json.loads(USER_COMPANIES.read_text()) if USER_COMPANIES.exists() else []
+    if not any(r["ticker"] == entry["ticker"] for r in rows):
+        rows.append(entry)
+        USER_COMPANIES.parent.mkdir(parents=True, exist_ok=True)
+        USER_COMPANIES.write_text(json.dumps(rows, indent=2))
 
 
 def company(ticker: str) -> dict:

@@ -8,6 +8,7 @@ const FILTERS = [
   ["not_found", "Not found"],
   ["wrong", "Graded wrong"],
 ];
+const USER_FILTERS = FILTERS.map(([id, l]) => [id, id === "wrong" ? "Differs from SEC" : l]);
 
 function matches(item, f) {
   const s = item.answer?.status;
@@ -29,7 +30,7 @@ export function mountChecklist(root, ctx) {
         <div class="co-head"></div>
         <div class="seg filters" role="group" aria-label="Filter answers"></div>
         <p class="list-hint small muted">Use the ↑ and ↓ keys to step through questions.</p>
-        <div class="list-key" aria-hidden="true"><span>Status</span><span>Question</span><span>Graded</span></div>
+        <div class="list-key" aria-hidden="true"><span>Status</span><span>Question</span><span>${company.split === "user" ? "SEC check" : "Graded"}</span></div>
         <nav class="q-list" aria-label="Questions"><p class="muted pad">Loading the checklist…</p></nav>
       </aside>
       <section class="pane pane--detail" aria-live="polite"></section>
@@ -43,10 +44,11 @@ export function mountChecklist(root, ctx) {
   head.innerHTML = `
     <h1 class="co-name">${esc(company.name)}</h1>
     <p class="co-sit">${esc(company.situation)}</p>
-    <p class="muted small">Fiscal year ends ${MONTHS[Number(fye.slice(0, 2)) - 1]} ${Number(fye.slice(2))} · ${company.filings.length} SEC filings loaded</p>`;
+    <p class="muted small">Fiscal year ends ${MONTHS[Number(fye.slice(0, 2)) - 1]} ${Number(fye.slice(2))} · ${company.filings.length} SEC filings loaded</p>
+    ${company.split === "user" && company.number_check ? `<p class="small">Numbers checked against the SEC's structured data: <strong class="num">${company.number_check.matched} of ${company.number_check.checked}</strong> match. There's no hand-built answer key for this company, so the text answers aren't graded; each one shows its quote to check.</p>` : ""}`;
 
   function renderFilters() {
-    filters.innerHTML = FILTERS.map(([id, label]) => {
+    filters.innerHTML = (company.split === "user" ? USER_FILTERS : FILTERS).map(([id, label]) => {
       const n = data ? data.items.filter((i) => matches(i, id)).length : "";
       return `<button class="seg__btn ${filter === id ? "is-on" : ""}" data-f="${id}" aria-pressed="${filter === id}">${label} <span class="num muted">${n}</span></button>`;
     }).join("");
@@ -123,6 +125,11 @@ export function mountChecklist(root, ctx) {
   api(`/api/checklist/${ticker}`)
     .then((d) => {
       data = d;
+      if (!data.items.some((i) => i.answer)) {
+        list.innerHTML = "";
+        detail.innerHTML = emptyState("doc", `${company.name} has no checklist yet`, `Run it from <a href="#/add">Add a company</a>.`);
+        return;
+      }
       if (!selected || !data.items.some((i) => i.qid === selected)) selected = data.items[0].qid;
       const src = d.source;
       const when = src.name ? fmtDate(src.name.match(/\d{4}-\d{2}-\d{2}/)?.[0]) : "";

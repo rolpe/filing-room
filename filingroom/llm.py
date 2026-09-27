@@ -41,6 +41,7 @@ def client() -> anthropic.Anthropic:
 @dataclass
 class CostMeter:
     by_model: dict = field(default_factory=dict)
+    limit: float | None = None  # hard stop for this meter's work (e.g. one UI run)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def add(self, model: str, usage) -> None:
@@ -76,6 +77,8 @@ class LLMError(Exception):
 def complete_json(model: str, system: str, user: str, schema: dict, meter: CostMeter,
                   effort: str | None = None, max_tokens: int = 16000) -> dict:
     """One request, schema-constrained JSON back. Raises LLMError on refusal or truncation."""
+    if meter.limit is not None and meter.cost() >= meter.limit:
+        raise SystemExit(f"Stopped: this job reached its ${meter.limit:.2f} limit.")
     if _command_spend >= MAX_USD_PER_COMMAND:
         raise SystemExit(f"Stopped: this command has spent ${_command_spend:.2f}, over the "
                          f"${MAX_USD_PER_COMMAND:.2f} cap (FILINGROOM_MAX_USD).")

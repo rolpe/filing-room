@@ -14,12 +14,12 @@ import os
 import re
 import threading
 import webbrowser
-from datetime import date
+from datetime import date, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import answer, checklist, config, edgar, golden, llm
+from . import answer, checklist, config, edgar, golden, llm, memo, pipeline
 from .index import Index
 
 UI_DIR = config.ROOT / "ui"
@@ -70,6 +70,14 @@ def _slim_citations(cits: list[dict]) -> list[dict]:
     return [{k: c.get(k) for k in ("chunk_id", "quote", "verified", "url", "doc_id", "section")} for c in cits]
 
 
+def _number_check_summary(ticker: str) -> dict | None:
+    run = _latest_run(ticker)
+    if not run:
+        return None
+    nc = json.loads(run.read_text())["meta"].get("number_check")
+    return {"checked": nc["checked"], "matched": nc["matched"]} if nc else None
+
+
 def companies() -> list[dict]:
     out = []
     for t, co in config.companies().items():
@@ -85,6 +93,7 @@ def companies() -> list[dict]:
             "periods": checklist.periods(t) if filings else None,
             "eval": {"run": name, "graded": len(graded), "correct": sum(r["correct"] for r in graded)} if rows else None,
             "situation": co.get("why", ""),
+            "number_check": _number_check_summary(t),
             "has_run": _latest_run(t) is not None,
             "has_memo": any(config.RUNS.glob(f"{t}_*_memo.json")),
         })
@@ -96,9 +105,11 @@ def checklist_view(ticker: str) -> dict:
     qs = checklist.load()
     eval_name, eval_rows = _latest_eval_rows(ticker)
     run = _latest_run(ticker)
+    number_check = {}
     if run:
         data = json.loads(run.read_text())
         answers = {a["qid"]: a for a in data["answers"]}
+        number_check = {i["qid"]: i for i in data["meta"].get("number_check", {}).get("items", [])}
         source = {"kind": "run", "name": run.stem, "model": data["meta"]["model"],
                   "cost_usd": data["meta"]["cost_usd"]}
     else:
@@ -112,9 +123,13 @@ def checklist_view(ticker: str) -> dict:
             "qid": q["id"], "category": q["category"], "question": q["question"], "answer_type": q["answer_type"],
             "answer": a and {k: a.get(k) for k in ("status", "answer", "value", "unit", "period", "confidence")},
             "citations": _slim_citations(a["citations"]) if a else [],
-            "graded": g and {"correct": g["correct"], "grade": g["grade"], "supported": g["supported"],
-                             "expected": g["expected"], "judge_reason": g.get("judge_reason", ""),
-                             "eval_run": eval_name},
+            "graded": (g and {"correct": g["correct"], "grade": g["grade"], "supported": g["supported"],
+                              "expected": g["expected"], "judge_reason": g.get("judge_reason", ""),
+                              "eval_run": eval_name, "source": "golden"})
+                      or (q["id"] in number_check and {"correct": number_check[q["id"]]["match"], "grade": "numeric",
+                                                        "supported": None, "expected": number_check[q["id"]]["expected"],
+                                                        "judge_reason": "", "eval_run": None, "source": "sec_data"})
+                      or None,
         })
     return {"ticker": ticker, "source": source, "items": items}
 
@@ -273,7 +288,8 @@ def golden_verify(item_id: str, verified: bool) -> dict:
     if not found:
         raise KeyError(item_id)
     golden.MANUAL.write_text("\n".join(lines) + "\n")
-    golden.build(list(config.companies()))  # keep golden.jsonl in sync
+    from .evaluate import eval_tickers
+    golden.build(eval_tickers(final=True))  # keep golden.jsonl in sync (case studies only)
     (config.ROOT / "golden" / "REVIEW.md").write_text(golden.review_sheet())
     return {"id": item_id, "verified": found["verified"]}
 
@@ -304,7 +320,7 @@ def ask(ticker: str, question: str) -> dict:
     qs = checklist.by_id()
     q = qs.get(question) or {"id": "adhoc", "category": "Ad hoc", "question": question[:500],
                              "answer_type": "text", "period": "current", "where": {}}
-    meter = llm.CostMeter()
+    meter = llm.CostMeter(limit=0.25)
     r = answer.answer_question(ticker, q, _index(ticker), meter)
     cost = meter.cost()
     with _lock:
@@ -315,6 +331,87 @@ def ask(ticker: str, question: str) -> dict:
     return {"question": q["question"], "cost_usd": round(cost, 4),
             **{k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence", "error")},
             "citations": _slim_citations(r["citations"]), "spend": spend_view()}
+
+
+# ---------------------------------------------------------------- paid: run a new company's checklist
+
+RUN_LEDGER = config.DATA / "run_spend.json"
+RUN_MAX_USD_PER_DAY = float(os.environ.get("RUN_MAX_USD_PER_DAY", "3.00"))
+RUN_LIMIT_USD = 2.50  # hard stop for a single company run
+STAGES = ["register", "fetch", "parse", "index", "answer", "memo", "done"]
+_jobs: dict[str, dict] = {}
+
+
+def _run_ledger() -> dict:
+    try:
+        return json.loads(RUN_LEDGER.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def run_spend_view() -> dict:
+    led = _run_ledger()
+    return {"today_usd": round(led.get(date.today().isoformat(), 0.0), 4), "cap_usd": RUN_MAX_USD_PER_DAY,
+            "estimate_usd": pipeline.RUN_ESTIMATE_USD, "limit_usd": RUN_LIMIT_USD}
+
+
+def runs_view() -> dict:
+    added = [c for c in config.companies().values() if c["split"] == "user"]
+    return {"spend": run_spend_view(), "jobs": list(_jobs.values()),
+            "companies": [{"ticker": c["ticker"], "name": c["name"], "added": c.get("added"),
+                           "has_run": _latest_run(c["ticker"]) is not None,
+                           "number_check": _number_check_summary(c["ticker"])} for c in added]}
+
+
+def start_run(ticker: str) -> dict:
+    t = ticker.upper()
+    with _lock:
+        if any(j["state"] == "running" for j in _jobs.values()):
+            raise RuntimeError("Another company is already running. Wait for it to finish.")
+        today = date.today().isoformat()
+        spent = _run_ledger().get(today, 0.0)
+        if spent + pipeline.RUN_ESTIMATE_USD > RUN_MAX_USD_PER_DAY:
+            raise PermissionError(f"Today's company-run budget is used (${spent:.2f} of ${RUN_MAX_USD_PER_DAY:.2f}). "
+                                  "Raise RUN_MAX_USD_PER_DAY in .env to run more today.")
+        known = config.companies().get(t)
+        if known and known["split"] != "user":
+            raise ValueError(f"{t} is one of the three case studies; its answers are already in the app.")
+        job = {"ticker": t, "name": known["name"] if known else t, "state": "running", "stage": "register",
+               "done": 0, "total": 40, "cost_usd": 0.0, "error": None, "started": datetime.now().isoformat(timespec="seconds")}
+        _jobs[t] = job
+    threading.Thread(target=_run_job, args=(t,), daemon=True).start()
+    return job
+
+
+def _run_job(t: str) -> None:
+    job = _jobs[t]
+    meter = llm.CostMeter(limit=RUN_LIMIT_USD)
+
+    def stage(s):
+        job["stage"] = s
+    try:
+        entry = pipeline.register(t)
+        job["name"] = entry["name"]
+        pipeline.build(t, stage=stage)
+        with _lock:
+            _indexes.pop(t, None)
+        stage("answer")
+        path = pipeline.run_checklist(t, meter, progress=lambda d, n: job.update(done=d, total=n, cost_usd=round(meter.cost(), 4)))
+        stage("memo")
+        memo.run(t, path, memo.DEFAULT_MODEL, memo.DEFAULT_EFFORT, do_check=True, log=False, meter=meter)
+        stage("done")
+        job["state"] = "done"
+    except BaseException as e:  # SystemExit from a limit, parser errors, network errors: report, don't crash
+        job["state"] = "failed"
+        job["error"] = str(e) or e.__class__.__name__
+    finally:
+        job["cost_usd"] = round(meter.cost(), 4)
+        with _lock:
+            led = _run_ledger()
+            today = date.today().isoformat()
+            led[today] = led.get(today, 0.0) + meter.cost()
+            RUN_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+            RUN_LEDGER.write_text(json.dumps(led, indent=1))
 
 
 # ---------------------------------------------------------------- HTTP
@@ -368,6 +465,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(spend_view())
             if route == ["golden"]:
                 return self._json(golden_view())
+            if route == ["runs"]:
+                return self._json(runs_view())
+            if route == ["sec-search"]:
+                return self._json(pipeline.search(qs.get("q", [""])[0]))
+            if len(route) == 2 and route[0] == "sec-company":
+                try:
+                    return self._json(pipeline.preview(route[1]))
+                except KeyError as e:
+                    return self._error(404, str(e).strip("'\""))
             if len(route) == 2 and route[0] == "evals":
                 d = eval_detail(route[1])
                 return self._json(d) if d else self._error(404, "no such eval")
@@ -415,11 +521,15 @@ class Handler(BaseHTTPRequestHandler):
                 if not question:
                     return self._error(400, "empty question")
                 return self._json(ask(t, question))
+            if parts[:2] == ["api", "runs"] and len(parts) == 3:
+                return self._json(start_run(parts[2]))
             if parts[:2] == ["api", "golden"] and len(parts) == 4 and parts[3] == "verify":
                 return self._json(golden_verify(parts[2], bool(body.get("verified"))))
             return self._error(404, "not found")
         except PermissionError as e:
             return self._error(402, str(e))
+        except (RuntimeError, ValueError) as e:
+            return self._error(409, str(e))
         except KeyError as e:
             return self._error(404, f"unknown id {e}")
         except SystemExit as e:
@@ -436,13 +546,14 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(port: int = 8787, open_browser: bool = True) -> None:
+    llm.MAX_USD_PER_COMMAND = float("inf")  # long-lived process: per-job meter limits and daily ledgers apply instead
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     except OSError:
         raise SystemExit(f"Port {port} is already in use (maybe the UI is already running?). Try ./fr ui --port {port + 1}")
     url = f"http://127.0.0.1:{port}/"
     print(f"filing-room UI on {url}  (local only; Ctrl-C to stop)")
-    print(f"paid actions capped at ${UI_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY)")
+    print(f"paid actions: Ask ${UI_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY), company runs ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)")
     if open_browser:
         webbrowser.open(url)
     try:

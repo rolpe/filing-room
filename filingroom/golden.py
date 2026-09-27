@@ -44,31 +44,34 @@ def _resolve(q: dict, facts: dict, P: dict) -> dict | None:
             "source": {"method": "xbrl", "concepts": concepts, "end": end, "accn": found[0][1]["accn"]}}
 
 
-def build(tickers: list[str]) -> list[dict]:
+def numeric_items(ticker: str) -> list[dict]:
+    """XBRL-derived numeric answers (plus derived growth/margin) for one company."""
     qs = checklist.load()
+    facts = edgar.company_facts(config.company(ticker))
+    P = checklist.periods(ticker)
+    resolved: dict[str, dict] = {}
+    for q in qs:
+        if "xbrl" in q and (r := _resolve(q, facts, P)):
+            resolved[q["id"]] = r
+    for q in qs:
+        if "derive" in q:
+            d = q["derive"]
+            a, b = resolved.get(d["of"]), resolved.get(d["base"])
+            if a and b and b["value"]:
+                v = (a["value"] / b["value"] - 1) * 100 if d["op"] == "growth" else a["value"] / b["value"] * 100
+                resolved[q["id"]] = {"value": round(v, 2), "unit": "percent", "period": P["latest_fy"],
+                                     "source": {"method": "derived", "op": d["op"], "from": [d["of"], d["base"]]}}
     items = []
-    for t in tickers:
-        facts = edgar.company_facts(config.company(t))
-        P = checklist.periods(t)
-        resolved: dict[str, dict] = {}
-        for q in qs:
-            if "xbrl" in q and (r := _resolve(q, facts, P)):
-                resolved[q["id"]] = r
-        for q in qs:
-            if "derive" in q:
-                d = q["derive"]
-                a, b = resolved.get(d["of"]), resolved.get(d["base"])
-                if a and b and b["value"]:
-                    v = (a["value"] / b["value"] - 1) * 100 if d["op"] == "growth" else a["value"] / b["value"] * 100
-                    resolved[q["id"]] = {"value": round(v, 2), "unit": "percent", "period": P["latest_fy"],
-                                         "source": {"method": "derived", "op": d["op"],
-                                                    "from": [d["of"], d["base"]]}}
-        for qid, r in resolved.items():
-            q = next(x for x in qs if x["id"] == qid)
-            items.append({"id": f"{t}:{qid}", "ticker": t, "qid": qid, "answer_type": q["answer_type"],
-                          "grade": "numeric", "expected": {k: r[k] for k in ("value", "unit", "period")},
-                          "tolerance": TOLERANCE[q["answer_type"]], "source": r["source"],
-                          "verified": "xbrl-auto"})
+    for qid, r in resolved.items():
+        q = next(x for x in qs if x["id"] == qid)
+        items.append({"id": f"{ticker}:{qid}", "ticker": ticker, "qid": qid, "answer_type": q["answer_type"],
+                      "grade": "numeric", "expected": {k: r[k] for k in ("value", "unit", "period")},
+                      "tolerance": TOLERANCE[q["answer_type"]], "source": r["source"], "verified": "xbrl-auto"})
+    return items
+
+
+def build(tickers: list[str]) -> list[dict]:
+    items = [i for t in tickers for i in numeric_items(t)]
     if MANUAL.exists():
         for line in MANUAL.read_text().splitlines():
             if line.strip() and not line.startswith("//"):

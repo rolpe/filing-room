@@ -16,7 +16,7 @@ export function renderAnswer(el, { ticker, item, note = "" }) {
   const golden =
     g && g.expected
       ? `<details class="golden">
-          <summary>${icon("chevronDown", "golden__chev")}Compare with the golden answer</summary>
+          <summary>${icon("chevronDown", "golden__chev")}${g.source === "sec_data" ? "Compare with the SEC's figure" : "Compare with the golden answer"}</summary>
           <p>${esc(expectedText(g.expected))}</p>
           ${g.judge_reason ? `<p class="muted">Grader's note: ${esc(g.judge_reason)}</p>` : ""}
           ${g.eval_run ? `<p class="muted">Graded in eval run “${esc(g.eval_run.replace(/^\d{4}-\d{2}-\d{2}_\d{4}_?/, ""))}”.</p>` : ""}
@@ -35,7 +35,7 @@ export function renderAnswer(el, { ticker, item, note = "" }) {
         ${value ? `<div><dt>Value</dt><dd class="num">${value}</dd></div>` : ""}
         ${a.period && found ? `<div><dt>Period</dt><dd>${esc(a.period)}</dd></div>` : ""}
         ${found ? `<div><dt>Confidence</dt><dd>${esc(CONFIDENCE[a.confidence] || a.confidence || "–")}</dd></div>` : ""}
-        ${g ? `<div><dt>Eval</dt><dd>${gradeMark(g)}</dd></div>` : ""}
+        ${g ? `<div><dt>${g.source === "sec_data" ? "SEC check" : "Eval"}</dt><dd>${gradeMark(g)}</dd></div>` : ""}
       </dl>
       ${golden}
       ${

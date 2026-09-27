@@ -81,7 +81,8 @@ Abstention P / R: of the times the agent said "not found", how often that was ri
 `./fr ui` opens a research-tool view at http://127.0.0.1:8787: each checklist answer beside the SEC filing, the quote highlighted in place, plus the IC memo with per-sentence sources, eval history, free keyword search over the filings, and a golden-set review screen.
 
 - **Private by construction:** it listens on 127.0.0.1 only, rejects requests whose Host isn't the app itself (which blocks DNS rebinding), and requires a custom header on every POST (which blocks cross-site requests).
-- **Cost-capped:** asking a new question is the only paid action, with the cost shown and a server-side cap of $1/day (`UI_MAX_USD_PER_DAY`). Checklist runs and evals stay CLI-only.
+- **Cost-capped:** two paid actions, each with the cost shown first and a server-side daily cap: asking a question ($1/day, `UI_MAX_USD_PER_DAY`) and running a new company's checklist (about $1.10 each, $3/day, `RUN_MAX_USD_PER_DAY`). Evals stay CLI-only.
+- **Add any company:** search the SEC's list, check the company's filings can support the checklist, and run it (download, parse, index, 40 answers, memo) in two to three minutes. With no hand-built answer key, accuracy can't be fully scored; the numeric answers are checked against the SEC's XBRL data instead. First test: Workiva, 35 of 40 answered, 13 of 13 numbers matching SEC data, $1.08.
 - **Design:** built with [Impeccable](https://impeccable.style) and benchmarked against AlphaSense, Hebbia and S&P Capital IQ. An independent reviewer audited it against a written design contract over three rounds. DESIGN.md records the system.
 
 ## Run it
@@ -97,6 +98,7 @@ cp .env.example .env         # add ANTHROPIC_API_KEY and your email for EDGAR's 
 ./fr eval --label my-change  # score the tuning set (~$2.40)
 ./fr retrieval               # free: is the right number in the retrieved passages?
 ./fr ui                      # local web UI on 127.0.0.1:8787
+./fr add WK                  # free: add any SEC company (check, fetch, parse, index); then ./fr run WK (~$1)
 ```
 
 ## Layout

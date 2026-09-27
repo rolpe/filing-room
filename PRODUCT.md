@@ -41,7 +41,8 @@ Surfaces backed by the existing API (`filingroom/server.py`):
 - Eval history: metrics across runs (accuracy, citation support, abstention, retrieval, cost), failures per run, memo claim checks.
 - Passage search (BM25, free): what retrieval returns for a query.
 - Golden-set review: each hand-drafted golden item with its quote; a verify toggle writes `"verified": "human"` to `golden/manual.jsonl`.
-- Ask: a live question to BILL or RPD (paid, ~$0.02–0.05).
+- Ask: a live question to any company in the app (paid, ~$0.02–0.05).
+- Add a company: search any SEC-registered company, check its filings can support the checklist, then (after an explicit cost confirmation) download, parse, index, answer all 40 questions and write the memo, with a progress view. Paid, ~$1.10–1.20 per company, capped at $3/day (`RUN_MAX_USD_PER_DAY`) and $2.50 per run. Added companies have no hand-built answer key: their numeric answers are checked automatically against the SEC's XBRL data ("SEC check"), text answers are not graded, and they never enter evals.
 
 Constraints:
 - Local only: loopback bind, Host-header check, custom header required on POSTs.

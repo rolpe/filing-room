@@ -95,7 +95,9 @@ export function mountMemo(root, ctx) {
               `No memo for ${company.name}`,
               company.split === "holdout"
                 ? "Box was tested with a single checklist run and no memo was generated for it. Its answers are on the Checklist tab."
-                : `Generate one from the command line with <code>./fr memo ${esc(ticker)}</code>.`,
+                : company.split === "user"
+                  ? `Run ${esc(company.name)}'s checklist from <a href="#/add">Add a company</a>; the memo is written at the end of the run.`
+                  : `Generate one from the command line with <code>./fr memo ${esc(ticker)}</code>.`,
             )
           : emptyState("alert", "Couldn't load the memo", esc(e.message));
     });

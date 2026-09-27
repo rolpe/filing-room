@@ -11,6 +11,7 @@ const history = {}; // per company, this browser session only
 export function mountAsk(root, ctx) {
   const { ticker, company } = ctx;
   const past = (history[ticker] ||= []);
+  const examples = EXAMPLES[ticker] || [`Who is ${company.name}'s chief executive officer?`, `What was ${company.name}'s total revenue in the most recent fiscal year?`];
   root.innerHTML = `
     <div class="split">
       <aside class="pane pane--list">
@@ -18,12 +19,12 @@ export function mountAsk(root, ctx) {
           <h1 class="co-name">Ask ${esc(company.name)} a question</h1>
           <p class="muted small">Answered only from ${esc(company.name)}'s SEC filings, with a quote checked against the source. Each question is a live call to Claude.${company.split === "holdout" ? " Live answers are separate from Box's recorded test run, which stays unchanged." : ""}</p>
           <label class="sr-only" for="ask-q">Your question</label>
-          <textarea id="ask-q" name="q" rows="4" maxlength="500" placeholder="e.g. ${esc(EXAMPLES[ticker]?.[0] || "")}"></textarea>
+          <textarea id="ask-q" name="q" rows="4" maxlength="500" placeholder="e.g. ${esc(examples[0])}"></textarea>
           <div class="ask__row">
             <p class="ask__cost small"></p>
             <button class="btn btn--primary" type="submit">Ask</button>
           </div>
-          <p class="ask__examples small">Try: ${(EXAMPLES[ticker] || []).map((q) => `<button type="button" class="link" data-ex="${esc(q)}">${esc(q)}</button>`).join(" · ")}</p>
+          <p class="ask__examples small">Try: ${examples.map((q) => `<button type="button" class="link" data-ex="${esc(q)}">${esc(q)}</button>`).join(" · ")}</p>
         </form>
         <div class="ask-history"></div>
       </aside>

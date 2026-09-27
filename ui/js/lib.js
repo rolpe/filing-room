@@ -140,6 +140,11 @@ export function statusIcon(status) {
 
 export function gradeMark(graded, { short = false } = {}) {
   if (!graded) return "";
+  if (graded.source === "sec_data") {
+    return graded.correct
+      ? `<span class="grade grade--ok" title="Matches the SEC's structured data">${icon("check")}${short ? "" : "<span>Matches SEC data</span>"}</span>`
+      : `<span class="grade grade--bad" title="Differs from the SEC's structured data">${icon("xCircle")}${short ? "" : "<span>Differs from SEC data</span>"}</span>`;
+  }
   if (graded.correct === true) return `<span class="grade grade--ok" title="Graded correct against the golden answer">${icon("check")}${short ? "" : "<span>Graded correct</span>"}</span>`;
   if (graded.correct === false) return `<span class="grade grade--bad" title="Graded wrong against the golden answer">${icon("xCircle")}${short ? "" : "<span>Graded wrong</span>"}</span>`;
   return short ? "" : `<span class="grade grade--none" title="Judgment question: only citation support is graded">${icon("circle")}<span>Support only</span></span>`;

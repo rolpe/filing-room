@@ -202,7 +202,7 @@ filing-room is a research tool in the canon of AlphaSense, Hebbia and S&P Capita
 
 Density is moderate and legible at shared-screen resolution. The app speaks in the platform's system sans with tabular numerals everywhere; the filing itself speaks in Charter, a document serif, so the reader can always tell the tool's words from the filing's words. Light theme only, chosen from the use scene: a laptop screen shared over video calls in daytime.
 
-The build refuses the AI-dashboard default: no KPI tiles, no chat bubbles, no decorative gradients. Motion is almost absent: a 180ms panel entrance and one highlight sweep across the quote. Nothing else moves.
+The build refuses the AI-dashboard default: no KPI tiles, no chat bubbles, no decorative gradients. Motion is almost absent: a 180ms panel entrance and one highlight sweep across the quote. The only other moving thing is a small spinner marking the running stage of a company run, because it signals work in progress. Nothing else moves.
 
 **Key Characteristics:**
 - White ground, graphite ink, 1px hairline rules for structure; tonal gray washes instead of cards.
@@ -351,7 +351,7 @@ Tables are full-width, 13.5px, 12px graphite-2 headers over a hairline-strong ru
 - **Do** set any text quoted from a filing in Charter, and everything the tool says in the system sans.
 - **Do** show status as icon plus word in the fixed tones (green verified, graphite-3 not in filings, amber unsupported); in dense lists use the icon with a column key and an accessible word.
 - **Do** draw structure with 1px hairlines (#e3e6eb) and gray washes; reserve the floating shadow for the tooltip.
-- **Do** keep motion to the 180ms ease-out panel entrance and the single quote sweep, and disable both under reduced motion.
+- **Do** keep motion to the 180ms ease-out panel entrance, the single quote sweep, and the run-progress spinner, and disable all three under reduced motion.
 - **Do** keep numerals tabular and right-align numeric table columns.
 - **Do** title-case SEC all-caps headings and render table pipes in quotes as thin cell dividers.
 

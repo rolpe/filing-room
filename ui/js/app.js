@@ -1,5 +1,6 @@
 // Shell and router: top bar, result strip, and one mounted view at a time.
 import { api, esc, icon, pct, usd } from "./lib.js";
+import { mountAdd } from "./views/add.js";
 import { mountAsk } from "./views/ask.js";
 import { mountChecklist } from "./views/checklist.js";
 import { mountEvals } from "./views/evals.js";
@@ -9,6 +10,7 @@ import { mountSearch } from "./views/search.js";
 
 const COMPANY_VIEWS = { checklist: ["Checklist", mountChecklist], memo: ["Memo", mountMemo], search: ["Search", mountSearch], ask: ["Ask", mountAsk] };
 const GLOBAL_VIEWS = { evals: ["Evals", mountEvals], golden: ["Golden set", mountGolden] };
+const HIDDEN_VIEWS = { add: ["Add a company", mountAdd] };
 
 const state = { companies: {}, order: [], spend: { today_usd: 0, cap_usd: 1, ask_estimate_usd: 0.05 }, ticker: null, current: null };
 const view = document.getElementById("view");
@@ -19,25 +21,30 @@ function parse(hash) {
   const q = new URLSearchParams(query);
   if (parts[0] === "evals") return { view: "evals", run: parts[1] };
   if (parts[0] === "golden") return { view: "golden" };
+  if (parts[0] === "add") return { view: "add" };
   const ticker = state.companies[parts[0]?.toUpperCase()] ? parts[0].toUpperCase() : state.order[0];
   const v = COMPANY_VIEWS[parts[1]] ? parts[1] : "checklist";
   return { view: v, ticker, qid: parts[2], q: q.get("q") || "" };
 }
 
 function renderTop(route) {
-  const t = route.ticker || state.ticker;
+  const t = route.ticker || state.ticker || state.order[0];
   const companyView = COMPANY_VIEWS[route.view] ? route.view : "checklist";
-  document.querySelector(".cos").innerHTML = state.order
-    .map((k) => {
-      const c = state.companies[k];
-      const on = route.ticker === k;
-      const name = c.name.replace(/,? Inc\.?$/, "");
-      const rest = name.toUpperCase().startsWith(k) ? name.slice(k.length).trim() : name;
-      return `<a class="co ${on ? "is-on" : ""}" href="#/${k}/${companyView}" title="${esc(c.name)}" ${on ? 'aria-current="page"' : ""}>
-        <strong>${k}</strong>${rest ? `<span>${esc(rest)}</span>` : ""}
+  const coLink = (k) => {
+    const c = state.companies[k];
+    const on = route.ticker === k && route.view !== "add";
+    const name = c.name.replace(/,? Inc\.?$/, "");
+    const rest = name.toUpperCase().startsWith(k) ? name.slice(k.length).trim() : name;
+    return `<a class="co ${on ? "is-on" : ""}" href="#/${k}/${companyView}" title="${esc(c.name)}" ${on ? 'aria-current="page"' : ""}>
+        <strong>${k}</strong>${rest && c.split !== "user" ? `<span>${esc(rest)}</span>` : ""}
       </a>`;
-    })
-    .join("");
+  };
+  const cases = state.order.filter((k) => state.companies[k].split !== "user");
+  const added = state.order.filter((k) => state.companies[k].split === "user");
+  document.querySelector(".cos").innerHTML =
+    cases.map(coLink).join("") +
+    (added.length ? '<span class="cos__sep" aria-hidden="true"></span>' + added.map(coLink).join("") : "");
+  document.querySelector(".add-co").classList.toggle("is-on", route.view === "add");
   const tab = (href, label, on) => `<a class="tab ${on ? "is-on" : ""}" href="${href}" ${on ? 'aria-current="page"' : ""}>${label}</a>`;
   document.querySelector(".tabs").innerHTML =
     Object.entries(COMPANY_VIEWS).map(([k, [label]]) => tab(`#/${t}/${k}`, label, route.view === k)).join("") +
@@ -66,15 +73,16 @@ function renderStrip(evals) {
 
 function route() {
   const r = parse(location.hash);
-  if (r.ticker) state.ticker = r.ticker;
-  renderTop({ ...r, ticker: r.ticker });
+  if (r.ticker && r.view !== "add") state.ticker = r.ticker;
+  renderTop({ ...r, ticker: r.view === "add" ? null : r.ticker });
   const cur = state.current;
+  if (r.view === "add") r.ticker = null;
   if (cur && cur.view === r.view && cur.ticker === r.ticker && cur.instance?.update) {
     cur.instance.update(r);
     return;
   }
   cur?.instance?.destroy?.();
-  const mount = (COMPANY_VIEWS[r.view] || GLOBAL_VIEWS[r.view])[1];
+  const mount = (COMPANY_VIEWS[r.view] || GLOBAL_VIEWS[r.view] || HIDDEN_VIEWS[r.view])[1];
   view.innerHTML = "";
   view.className = `view view--${r.view}`;
   const ctx = {
@@ -85,6 +93,12 @@ function route() {
     setSpend: (s) => {
       state.spend = s;
       renderSpend();
+    },
+    refreshCompanies: async () => {
+      const cos = await api("/api/companies");
+      cos.forEach((c) => (state.companies[c.ticker] = c));
+      state.order = cos.map((c) => c.ticker);
+      renderTop(parse(location.hash));
     },
   };
   state.current = { view: r.view, ticker: r.ticker, instance: mount(view, ctx) };
