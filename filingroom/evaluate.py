@@ -113,18 +113,18 @@ def metrics(rows: list[dict]) -> dict:
 
 # ---------------------------------------------------------------- driver
 
-def run(tickers: list[str], model: str, effort: str | None, k: int, judge_model: str = JUDGE_MODEL,
+def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int = 0, judge_model: str = JUDGE_MODEL,
         label: str = "", note: str = "", workers: int = 6, use_judge: bool = True) -> dict:
     t0 = time.time()
     items = golden.load(tickers)
     qs = checklist.by_id()
     ixs = {t: Index(t) for t in tickers}
     answer_meter, judge_meter = llm.CostMeter(), llm.CostMeter()
-    print(f"eval: {len(items)} golden items over {', '.join(tickers)} | model={model} effort={effort} k={k}")
+    print(f"eval: {len(items)} golden items over {', '.join(tickers)} | model={model} effort={effort} k={k} expand={expand}")
 
     def work(item):
         ans = answer.answer_question(item["ticker"], qs[item["qid"]], ixs[item["ticker"]], answer_meter,
-                                     model=model, effort=effort, k=k)
+                                     model=model, effort=effort, k=k, expand=expand)
         grade = item["grade"]
         correct, supported, reason = None, None, ""
         if grade == "numeric":
@@ -153,7 +153,7 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, judge_model:
     m["wall_seconds"] = round(time.time() - t0, 1)
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
     result = {"timestamp": stamp, "label": label, "note": note, "tickers": tickers, "model": model,
-              "effort": effort, "k": k, "judge_model": judge_model if use_judge else None,
+              "effort": effort, "k": k, "expand": expand, "judge_model": judge_model if use_judge else None,
               "metrics": m, "usage": {"answer": answer_meter.summary(), "judge": judge_meter.summary()},
               "rows": rows}
     prev = latest_result(tickers)
@@ -188,6 +188,7 @@ def report_md(r: dict, prev: dict | None, brief: bool = False) -> str:
             ("retrieval_recall", "Retrieval recall (numeric) %")]
     lines = [f"# Eval {r['timestamp']} {r['label']}", "",
              f"{', '.join(r['tickers'])} · model `{r['model']}` · effort `{r['effort']}` · k={r['k']} · "
+             f"expand={r.get('expand', 0)} · "
              f"judge `{r['judge_model']}`", ""]
     if r["note"]:
         lines += [f"Change: {r['note']}", ""]
@@ -230,13 +231,13 @@ def append_changelog(r: dict) -> None:
                              "Abstain P/R | Retrieval % | $ answer/judge |\n|---|---|---|---|---|---|---|---|---|\n")
     with open(CHANGELOG, "a") as f:
         f.write(f"| {r['timestamp']} {r['label']} | {','.join(r['tickers'])} | {r['note'] or '-'} "
-                f"({r['model']}, {r['effort']}, k={r['k']}) | {_fmt(m['accuracy'])} | "
+                f"({r['model']}, {r['effort']}, k={r['k']}, expand={r.get('expand', 0)}) | {_fmt(m['accuracy'])} | "
                 f"{_fmt(m['citation_support_rate'])} | {_fmt(m['unsupported_claim_rate'])} | "
                 f"{_fmt(m['abstention_precision'])}/{_fmt(m['abstention_recall'])} | "
                 f"{_fmt(m['retrieval_recall'])} | {m['cost_usd']['answer']}/{m['cost_usd']['judge']} |\n")
 
 
-def retrieval_check(tickers: list[str], k: int) -> None:
+def retrieval_check(tickers: list[str], k: int, expand: int = 0) -> None:
     """No API calls: for numeric golden items, is the expected number anywhere in the top-k chunks?"""
     qs = checklist.by_id()
     hits, total = 0, 0
@@ -244,11 +245,11 @@ def retrieval_check(tickers: list[str], k: int) -> None:
         ix = Index(t)
         P = checklist.periods(t)
         for item in golden.load([t]):
-            fake = {"retrieved": [h.chunk["chunk_id"] for h in answer.retrieve(ix, qs[item["qid"]], P, k)]}
+            fake = {"retrieved": [h.chunk["chunk_id"] for h in answer.retrieve(ix, qs[item["qid"]], P, k, expand)]}
             ok = value_in_context(item, fake, ix)
             if ok is None:
                 continue
             total += 1
             hits += ok
             print(f"  {'✓' if ok else '✗'} {item['id']:<28} top: {fake['retrieved'][0]}")
-    print(f"retrieval recall@{k}: {hits}/{total} = {_pct(hits, total)}%")
+    print(f"retrieval recall@{k} (expand={expand}): {hits}/{total} = {_pct(hits, total)}%")

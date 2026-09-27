@@ -144,6 +144,11 @@ class Index:
         self.avgdl = sum(l for _, l in self.tfs) / max(n, 1)
         self.idf = {t: math.log(1 + (n - d + 0.5) / (d + 0.5)) for t, d in df.items()}
 
+    def neighbors(self, chunk_id: str) -> list[dict]:
+        """The chunks immediately before and after this one in the same section."""
+        base, _, n = chunk_id.rpartition("#")
+        return [self.by_id[i] for i in (f"{base}#{int(n) - 1:03d}", f"{base}#{int(n) + 1:03d}") if i in self.by_id]
+
     def search(self, query: str, k: int = 8, forms: list[str] | None = None,
                topics: list[str] | None = None, periods: list[str] | None = None,
                topic_boost: float = 1.5, period_boost: float = 1.3) -> list[Hit]:

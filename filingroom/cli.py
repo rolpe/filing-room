@@ -23,6 +23,8 @@ def _model_args(p):
     p.add_argument("--model", default=answer.DEFAULT_MODEL)
     p.add_argument("--effort", default=answer.DEFAULT_EFFORT, help="low|medium|high|xhigh|max, or 'none'")
     p.add_argument("--k", type=int, default=answer.DEFAULT_K, help="chunks retrieved per question")
+    p.add_argument("--expand", type=int, default=answer.DEFAULT_EXPAND,
+                   help="also include the neighbors of the top-N hits")
 
 
 def _effort(e: str) -> str | None:
@@ -74,6 +76,7 @@ def main() -> None:
     p = sub.add_parser("retrieval", help="LLM-free check: is the golden number in the top-k chunks?")
     p.add_argument("--final", action="store_true")
     p.add_argument("--k", type=int, default=answer.DEFAULT_K)
+    p.add_argument("--expand", type=int, default=answer.DEFAULT_EXPAND)
 
     a = ap.parse_args()
 
@@ -104,7 +107,7 @@ def main() -> None:
         q = qs.get(a.question) or {"id": "adhoc", "category": "Ad hoc", "question": a.question,
                                    "answer_type": "text", "period": "current", "where": {}}
         meter = llm.CostMeter()
-        r = answer.answer_question(t, q, index.Index(t), meter, model=a.model, effort=_effort(a.effort), k=a.k)
+        r = answer.answer_question(t, q, index.Index(t), meter, model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
         print(json.dumps({k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence",
                                             "citations", "error")}, indent=2))
         print(f"cost ${meter.cost():.4f}")
@@ -116,7 +119,7 @@ def main() -> None:
         print(f"answering {len(qs)} questions for {t} with {a.model} ...")
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
             rows = list(pool.map(lambda q: answer.answer_question(t, q, ix, meter, model=a.model,
-                                                                  effort=_effort(a.effort), k=a.k), qs))
+                                                                  effort=_effort(a.effort), k=a.k, expand=a.expand), qs))
         stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
         meta = {"timestamp": stamp, "model": a.model, "cost_usd": meter.cost(),
                 "n_filings": len(edgar.manifest(t)), "usage": meter.summary()}
@@ -134,14 +137,14 @@ def main() -> None:
             qs, meter = checklist.by_id(), llm.CostMeter()
             for item in [i for i in golden.load(tickers) if i["id"] in ids]:
                 r = answer.answer_question(item["ticker"], qs[item["qid"]], index.Index(item["ticker"]), meter,
-                                           model=a.model, effort=_effort(a.effort), k=a.k)
+                                           model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
                 print(json.dumps({"id": item["id"], "expected": item["expected"], "status": r["status"],
                                   "answer": r["answer"], "value": r["value"], "citations": r["citations"],
                                   "retrieved": r["retrieved"]}, indent=2))
             print(f"cost ${meter.cost():.4f}")
             return
-        evaluate.run(tickers, a.model, _effort(a.effort), a.k, judge_model=a.judge_model, label=a.label,
+        evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model, label=a.label,
                      note=a.note, workers=a.workers, use_judge=not a.no_judge)
 
     elif a.cmd == "retrieval":
-        evaluate.retrieval_check(evaluate.eval_tickers(a.final), a.k)
+        evaluate.retrieval_check(evaluate.eval_tickers(a.final), a.k, a.expand)

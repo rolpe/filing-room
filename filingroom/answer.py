@@ -5,11 +5,12 @@ import time
 import unicodedata
 
 from . import checklist, config, llm
-from .index import Index
+from .index import Hit, Index
 
 DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_EFFORT = "medium"
 DEFAULT_K = 8
+DEFAULT_EXPAND = 2  # add the neighbors of the top-N hits (answers often sit just across a chunk boundary)
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -80,18 +81,33 @@ def _excerpt(c: dict) -> str:
             f'{c["text"]}\n</excerpt>')
 
 
-def retrieve(ix: Index, q: dict, P: dict, k: int) -> list:
+def retrieve(ix: Index, q: dict, P: dict, k: int, expand: int = DEFAULT_EXPAND) -> list:
     query = f"{q['question']} {q.get('search', '')}"
     where = q.get("where", {})
-    return ix.search(query, k=k, forms=where.get("forms"), topics=where.get("topics"),
+    hits = ix.search(query, k=k, forms=where.get("forms"), topics=where.get("topics"),
                      periods=checklist.target_periods(q, P))
+    if not expand:
+        return hits
+    out, seen = [], set()
+    for i, h in enumerate(hits):
+        group = [h]
+        if i < expand:  # prev, hit, next: keeps the neighbors in reading order
+            prev_next = ix.neighbors(h.chunk["chunk_id"])
+            group = [Hit(0.0, c) for c in prev_next if c["chunk_id"] < h.chunk["chunk_id"]] + [h] + \
+                    [Hit(0.0, c) for c in prev_next if c["chunk_id"] > h.chunk["chunk_id"]]
+        for g in group:
+            if g.chunk["chunk_id"] not in seen:
+                seen.add(g.chunk["chunk_id"])
+                out.append(g)
+    return out
 
 
 def answer_question(ticker: str, q: dict, ix: Index, meter: llm.CostMeter, model: str = DEFAULT_MODEL,
-                    effort: str | None = DEFAULT_EFFORT, k: int = DEFAULT_K) -> dict:
+                    effort: str | None = DEFAULT_EFFORT, k: int = DEFAULT_K,
+                    expand: int = DEFAULT_EXPAND) -> dict:
     co = config.company(ticker)
     P = checklist.periods(ticker)
-    hits = retrieve(ix, q, P, k)
+    hits = retrieve(ix, q, P, k, expand)
     fye = co["fiscal_year_end"]
     user = (f"<question id=\"{q['id']}\">\n"
             f"Company: {co['name']} (ticker {ticker}); fiscal year ends {fye[:2]}/{fye[2:]}.\n"
@@ -126,5 +142,5 @@ def answer_question(ticker: str, q: dict, ix: Index, meter: llm.CostMeter, model
         "value": out["value"], "parsed_value": parse_value(out["value"]), "unit": out["unit"],
         "period": out["period"], "confidence": out["confidence"], "citations": out["citations"],
         "citations_verified": n_ok, "retrieved": [h.chunk["chunk_id"] for h in hits],
-        "model": model, "effort": effort, "k": k, "seconds": round(time.time() - t0, 1), "error": error,
+        "model": model, "effort": effort, "k": k, "expand": expand, "seconds": round(time.time() - t0, 1), "error": error,
     }
