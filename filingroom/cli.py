@@ -6,7 +6,7 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from . import answer, checklist, config, edgar, evaluate, golden, index, llm, parse, report
+from . import answer, checklist, config, edgar, evaluate, golden, index, llm, memo, parse, report
 
 
 def _tickers(arg: str, final: bool, allow_holdout: bool = False) -> list[str]:
@@ -62,6 +62,15 @@ def main() -> None:
     p.add_argument("--final", action="store_true")
     p.add_argument("--workers", type=int, default=6)
     _model_args(p)
+
+    p = sub.add_parser("memo", help="IC memo from the latest checklist run (or --run), with a claim check")
+    p.add_argument("ticker")
+    p.add_argument("--run", help="path to a runs/<TICKER>_<time>.json (default: latest)")
+    p.add_argument("--model", default=memo.DEFAULT_MODEL)
+    p.add_argument("--effort", default=memo.DEFAULT_EFFORT)
+    p.add_argument("--no-check", action="store_true")
+    p.add_argument("--final", action="store_true")
+    p.add_argument("--note", default="", help="what changed (logged with the claim check)")
 
     p = sub.add_parser("eval", help="answer + grade the golden set; writes results/ and CHANGELOG-evals.md")
     p.add_argument("--final", action="store_true", help="include the held-out company")
@@ -128,6 +137,24 @@ def main() -> None:
         (config.RUNS / f"{t}_{stamp}.md").write_text(report.checklist_md(t, rows, meta))
         counts = {s: sum(r["status"] == s for r in rows) for s in ("answered", "not_found", "unsupported", "error")}
         print(f"{counts} · ${meter.cost():.2f} -> runs/{t}_{stamp}.md")
+
+    elif a.cmd == "memo":
+        t = _tickers(a.ticker, a.final)[0]
+        from pathlib import Path
+        runs = sorted(p for p in config.RUNS.glob(f"{t}_*.json") if not p.stem.endswith("_memo"))
+        if not (a.run or runs):
+            sys.exit(f"No checklist run for {t}. Run: ./fr run {t}")
+        path = Path(a.run) if a.run else runs[-1]
+        print(f"composing memo for {t} from {path.name} with {a.model} ...")
+        r = memo.run(t, path, a.model, _effort(a.effort), do_check=not a.no_check, note=a.note)
+        if r["check"]:
+            c = r["check"]
+            print(f"claim check: {len(c['unsupported'])}/{c['n_sentences']} sentences unsupported "
+                  f"({c['unsupported_rate']}%), mechanical violations: {len(c['mechanical_violations'])}")
+            for v in c["judged"]:
+                if v["verdict"] != "supported":
+                    print(f"  ⚠ sentence {v['n']}: {v['reason']}")
+        print(f"${r['meta']['cost_usd']:.2f} -> {r['path'].relative_to(config.ROOT)}")
 
     elif a.cmd == "eval":
         tickers = evaluate.eval_tickers(a.final)
