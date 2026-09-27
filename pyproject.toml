@@ -1,0 +1,15 @@
+[project]
+name = "filing-room"
+version = "0.1.0"
+description = "A grounded diligence agent over public SEC filings, with evals."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.8.0",
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.3",
+]
+
+[tool.uv]
+# Not an installable package: run via ./fr (python -m filingroom). macOS can flag editable-install
+# .pth files as hidden, which Python 3.12 then skips, so we avoid relying on them.
+package = false

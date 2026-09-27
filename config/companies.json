@@ -1,0 +1,26 @@
+[
+  {
+    "ticker": "BILL",
+    "name": "BILL Holdings, Inc.",
+    "cik": 1786352,
+    "fiscal_year_end": "0630",
+    "split": "tune",
+    "why": "Starboard settlement (Oct 2025): two board seats, standstill; 30% cost cuts and $1B buyback in 2026. June fiscal year."
+  },
+  {
+    "ticker": "RPD",
+    "name": "Rapid7, Inc.",
+    "cik": 1560327,
+    "fiscal_year_end": "1231",
+    "split": "tune",
+    "why": "Jana Partners ~10% stake pushing for a sale; nomination agreement Mar 2026. Calendar fiscal year."
+  },
+  {
+    "ticker": "BOX",
+    "name": "Box, Inc.",
+    "cik": 1372612,
+    "fiscal_year_end": "0131",
+    "split": "holdout",
+    "why": "Held out until the final run. January fiscal year (FY2026 ended Jan 31, 2026), which stresses period handling."
+  }
+]

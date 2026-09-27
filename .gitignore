@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# Raw and derived filing data are re-creatable from EDGAR; keep them out of git.
+data/
+# Per-run answer dumps are large; eval results in results/ are committed.
+runs/
