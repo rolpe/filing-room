@@ -15,7 +15,7 @@ A personal learning project: a diligence agent that answers a standard PE dilige
 - Public data only. SEC EDGAR filings and company-published IR documents. No paid data, no transcripts from third-party services, nothing behind a login.
 - Personal machine, personal API keys, personal GitHub. Nothing from the author's employer: no templates, checklists, prompts, thesis language, or documents. The diligence checklist is written from scratch here.
 - Log API cost per run. Prefer cheaper models for bulk extraction; use the strongest model only where quality is measured to need it.
-- **Budget: this is a learning project, not a product.** Total API spend so far is ~$16.50 (2026-09-27). Ask before any command expected to cost more than ~$1. Prefer `--only` spot checks over full evals; a full tune-set eval is ~$2.40. `FILINGROOM_MAX_USD` (default $3) hard-stops any single command. Claude Code's own work (coding, drafting golden items) doesn't touch the API credits; only `./fr ask|run|eval|memo` do.
+- **Budget: this is a learning project, not a product.** Total API spend is ~$18 (2026-09-27, project finished). Ask before any command expected to cost more than ~$1. Prefer `--only` spot checks over full evals; a full tune-set eval is ~$2.40. `FILINGROOM_MAX_USD` (default $3) hard-stops any single command. Claude Code's own work (coding, drafting golden items) doesn't touch the API credits; only `./fr ask|run|eval|memo` do.
 - No framework sprawl. Plain Python, a local index, prompts in files, one CLI. Add a dependency only when a measured problem needs it. Current deps: `anthropic`, `beautifulsoup4`, `lxml`.
 
 ## Scope for v1
@@ -51,7 +51,8 @@ Models: answering `claude-sonnet-5` at effort `medium` (bulk extraction); judge 
 2. Eval runner (built). First real numbers (done). Neighbor chunks (+expand 2): 97.4 → 100 on the 38-item set.
 3. Golden set expanded to the full checklist (80 items for BILL + RPD): honest baseline 91.0%; recency fix for 'current' questions → 93.6%; CEO fix spot-checked.
 4. Memo generation + claim check (done): prompt v2 cut unsupported memo sentences 4.0% → 1.9%.
-5. System frozen (git tag `frozen-for-holdout`); BOX parsed for the first time after the freeze. Tuning is over; remaining ideas go in the README's 'what's next'.
+5. System frozen (git tag `frozen-for-holdout`); BOX parsed for the first time after the freeze; BOX golden set committed before the run.
+6. **Held-out result (2026-09-27): BOX 89.7% accuracy, 100% citation support, 0% unsupported, abstention recall 4/4, 3 false abstentions. Hypothesis passes.** Project is in its finished state; further tuning on BOX would invalidate the holdout. Remaining ideas are in the README's 'What I'd do next'.
 
 Original plan:
 

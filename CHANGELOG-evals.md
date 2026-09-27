@@ -18,3 +18,4 @@ One line per eval run: what changed, what moved.
 | 2026-09-27_1614 golden-v2 | BILL,RPD | golden set expanded to full checklist (38 -> 80 items); new baseline (claude-sonnet-5, medium, k=8, expand=2) | 91.0 | 92.5 | 0.0 | 61.5/100.0 | 100.0 | 1.9287/0.5246 |
 | 2026-09-27_1616 recency | BILL,RPD | current-period questions: boost newest 10-Q/10-K + 8-K, always search 10-Q/8-K, tell model newest filings win (claude-sonnet-5, medium, k=8, expand=2) | 93.6 | 94.0 | 0.0 | 61.5/100.0 | 100.0 | 1.9122/0.5083 |
 | 2026-09-27 spot-check | RPD | CEO question also searches MD&A/8-K: RPD:mgmt_ceo ✗→✓ (Wael Mohamed, CEO since 2026-06-01); BILL:mgmt_ceo still ✓. 2-item spot check, not a full eval | – | – | – | – | – | 0.05 |
+| 2026-09-27_1635 HOLDOUT-box | BOX | held-out company, first and only run on system frozen at tag frozen-for-holdout (claude-sonnet-5, medium, k=8, expand=2) | 89.7 | 100.0 | 0.0 | 57.1/100.0 | 90.9 | 0.9933/0.2428 |
