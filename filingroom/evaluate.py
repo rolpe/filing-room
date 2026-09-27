@@ -41,11 +41,13 @@ def grade_numeric(item: dict, ans: dict) -> bool:
     v = ans["parsed_value"]
     if ans["status"] != "answered" or v is None:  # strict: an answer with no verified citation doesn't count
         return False
-    gold = item["expected"]["value"]
     tol = item.get("tolerance", {})
-    if "abs" in tol:
-        return abs(v - gold) <= tol["abs"]
-    return abs(v - gold) <= abs(gold) * tol.get("rel", 0.005) + 1e-9
+    for gold in [item["expected"]["value"]] + item.get("also_accept", []):
+        if "abs" in tol and abs(v - gold) <= tol["abs"]:
+            return True
+        if "abs" not in tol and abs(v - gold) <= abs(gold) * tol.get("rel", 0.005) + 1e-9:
+            return True
+    return False
 
 
 def judge(item: dict, ans: dict, need_correct: bool, meter: llm.CostMeter, model: str) -> dict:

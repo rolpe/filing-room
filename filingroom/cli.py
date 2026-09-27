@@ -80,6 +80,7 @@ def main() -> None:
     p.add_argument("--no-judge", action="store_true")
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--only", help="comma-separated golden ids to run (for debugging; not logged)")
+    p.add_argument("--companies", help="comma-separated tickers (default: tuning set, or all with --final)")
     _model_args(p)
 
     p = sub.add_parser("retrieval", help="LLM-free check: is the golden number in the top-k chunks?")
@@ -101,7 +102,8 @@ def main() -> None:
 
     elif a.cmd == "golden":
         items = golden.build(evaluate.eval_tickers(a.final))
-        print(f"{len(items)} golden items -> {config.GOLDEN.relative_to(config.ROOT)}")
+        (config.ROOT / "golden" / "REVIEW.md").write_text(golden.review_sheet())
+        print(f"{len(items)} golden items -> {config.GOLDEN.relative_to(config.ROOT)} (+ golden/REVIEW.md)")
 
     elif a.cmd == "search":
         ix = index.Index(config.company(a.ticker)["ticker"])
@@ -158,6 +160,8 @@ def main() -> None:
 
     elif a.cmd == "eval":
         tickers = evaluate.eval_tickers(a.final)
+        if a.companies:
+            tickers = [t for c in a.companies.split(",") for t in _tickers(c.strip(), a.final)]
         if a.only:
             # Debug path: run a subset without writing results or the changelog.
             ids = set(a.only.split(","))

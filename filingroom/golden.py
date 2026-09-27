@@ -75,6 +75,8 @@ def build(tickers: list[str]) -> list[dict]:
                 item = json.loads(line)
                 if item["ticker"] in tickers:
                     items.append(item)
+    overrides = {i["id"] for i in items if i.get("override_xbrl")}
+    items = [i for i in items if not (i["id"] in overrides and i.get("verified") == "xbrl-auto")]
     ids = [i["id"] for i in items]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:
@@ -87,3 +89,32 @@ def build(tickers: list[str]) -> list[dict]:
 def load(tickers: list[str] | None = None) -> list[dict]:
     items = [json.loads(line) for line in config.GOLDEN.read_text().splitlines() if line.strip()]
     return [i for i in items if tickers is None or i["ticker"] in tickers]
+
+
+def review_sheet() -> str:
+    """golden/REVIEW.md: every hand-drafted item as a checklist a human can verify against the quote."""
+    qs = checklist.by_id()
+    items = [json.loads(l) for l in MANUAL.read_text().splitlines() if l.strip() and not l.startswith("//")]
+    lines = ["# Golden set review", "",
+             "Hand-drafted golden answers. For each: read the quote, confirm it says what the expected answer "
+             "claims for the right period, then change `\"verified\": \"claude-draft\"` to `\"human\"` for that id "
+             "in `golden/manual.jsonl`. Regenerate this sheet with `./fr golden --final`.", ""]
+    for t in sorted({i["ticker"] for i in items}):
+        todo = [i for i in items if i["ticker"] == t]
+        done = sum(i.get("verified") == "human" for i in todo)
+        lines += [f"## {t} ({done}/{len(todo)} verified)", ""]
+        for i in todo:
+            exp = i["expected"]
+            answer = ("NOT IN FILINGS: " + exp.get("text", "")) if exp.get("not_found") else (
+                exp.get("text") or f"{exp.get('value'):,} {exp.get('unit', '')} ({exp.get('period', '')})")
+            src = i.get("source", {})
+            quotes = ([(src["doc_id"], src["quote"])] if src.get("quote") else []) + \
+                     [(q["doc_id"], q["quote"]) for q in src.get("quotes", [])]
+            box = "x" if i.get("verified") == "human" else " "
+            lines += [f"- [{box}] **{i['id']}** ({i['grade']}): {qs[i['qid']]['question']}",
+                      f"  - Expected: {answer}"]
+            lines += [f"  - Quote ({d}): “{q}”" for d, q in quotes[:3]] or [f"  - Method: {src.get('method', '')}"]
+            if i.get("note"):
+                lines.append(f"  - Note: {i['note']}")
+            lines.append("")
+    return "\n".join(lines)
