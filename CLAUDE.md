@@ -15,7 +15,7 @@ A personal learning project: a diligence agent that answers a standard PE dilige
 - Public data only. SEC EDGAR filings and company-published IR documents. No paid data, no transcripts from third-party services, nothing behind a login.
 - Personal machine, personal API keys, personal GitHub. Nothing from the author's employer: no templates, checklists, prompts, thesis language, or documents. The diligence checklist is written from scratch here.
 - Log API cost per run. Prefer cheaper models for bulk extraction; use the strongest model only where quality is measured to need it.
-- **Budget: this is a learning project, not a product.** Total API spend is ~$18 (2026-09-27, project finished). Ask before any command expected to cost more than ~$1. Prefer `--only` spot checks over full evals; a full tune-set eval is ~$2.40. `FILINGROOM_MAX_USD` (default $3) hard-stops any single command. Claude Code's own work (coding, drafting golden items) doesn't touch the API credits; only `./fr ask|run|eval|memo` do.
+- **Budget: this is a learning project, not a product.** Total API spend is ~$19 (2026-09-27, including the $1.08 Workiva test run of the add-a-company feature). Ask before any command expected to cost more than ~$1. Prefer `--only` spot checks over full evals; a full tune-set eval is ~$2.40. `FILINGROOM_MAX_USD` (default $3) hard-stops any single command. Claude Code's own work (coding, drafting golden items) doesn't touch the API credits; only `./fr ask|run|eval|memo` do.
 - No framework sprawl. Plain Python, a local index, prompts in files, one CLI. Add a dependency only when a measured problem needs it. Current deps: `anthropic`, `beautifulsoup4`, `lxml`.
 
 ## Scope for v1
