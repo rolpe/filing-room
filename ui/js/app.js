@@ -31,8 +31,10 @@ function renderTop(route) {
     .map((k) => {
       const c = state.companies[k];
       const on = route.ticker === k;
-      return `<a class="co ${on ? "is-on" : ""}" href="#/${k}/${companyView}" ${on ? 'aria-current="page"' : ""}>
-        <strong>${k}</strong><span>${esc(c.name.replace(/,? Inc\.?$/, ""))}</span>${c.split === "holdout" ? '<em class="tag">held out</em>' : ""}
+      const name = c.name.replace(/,? Inc\.?$/, "");
+      const rest = name.toUpperCase().startsWith(k) ? name.slice(k.length).trim() : name;
+      return `<a class="co ${on ? "is-on" : ""}" href="#/${k}/${companyView}" title="${esc(c.name)}" ${on ? 'aria-current="page"' : ""}>
+        <strong>${k}</strong>${rest ? `<span>${esc(rest)}</span>` : ""}${c.split === "holdout" ? '<em class="tag">held out</em>' : ""}
       </a>`;
     })
     .join("");

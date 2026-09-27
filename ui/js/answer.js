@@ -1,5 +1,5 @@
 // The answer panel: question, answer, marks, golden answer, cited quotes, and the filing open at the quote.
-import { docLabel, esc, expectedText, fmtValue, gradeMark, icon, mountFiling, statusMark } from "./lib.js";
+import { docLabel, esc, expectedText, fmtValue, focusQuote, gradeMark, icon, mountFiling, prettyHeading, quoteHTML, statusMark } from "./lib.js";
 
 const CONFIDENCE = { high: "High", medium: "Medium", low: "Low" };
 
@@ -46,8 +46,8 @@ export function renderAnswer(el, { ticker, item, note = "" }) {
                 ${verified
                   .map(
                     (c, i) => `<li><button class="source ${i === 0 ? "is-active" : ""}" data-i="${i}" aria-pressed="${i === 0}">
-                      <span class="source__quote">“${esc(c.quote)}”</span>
-                      <span class="source__doc">${esc(docLabel(c.doc_id))} · ${esc(c.section || "")}</span>
+                      <span class="source__quote">“${quoteHTML(c.quote)}”</span>
+                      <span class="source__doc">${esc(docLabel(c.doc_id))} · ${esc(prettyHeading(c.section || ""))}</span>
                     </button></li>`,
                   )
                   .join("")}
@@ -62,6 +62,21 @@ export function renderAnswer(el, { ticker, item, note = "" }) {
 
   if (!verified.length) return;
   const slot = el.querySelector(".filing-slot");
+  let shown = null; // chunk currently open in the filing pane
+  const qIndex = (j) => {
+    // index of citation j among the quotes highlighted in the open passage, or -1
+    const same = verified.filter((x) => x.chunk_id === shown);
+    return verified[j].chunk_id === shown ? same.indexOf(verified[j]) : -1;
+  };
+  el.querySelectorAll(".source").forEach((b) => {
+    const j = Number(b.dataset.i);
+    const on = () => qIndex(j) >= 0 && focusQuote(slot, qIndex(j), true);
+    const off = () => qIndex(j) >= 0 && focusQuote(slot, qIndex(j), false);
+    b.addEventListener("mouseenter", on);
+    b.addEventListener("focus", on);
+    b.addEventListener("mouseleave", off);
+    b.addEventListener("blur", off);
+  });
   const open = (i) => {
     el.querySelectorAll(".source").forEach((b) => {
       const on = Number(b.dataset.i) === i;
@@ -71,6 +86,7 @@ export function renderAnswer(el, { ticker, item, note = "" }) {
     const c = verified[i];
     // Highlight every cited quote that lives in the same passage.
     const quotes = verified.filter((x) => x.chunk_id === c.chunk_id).map((x) => x.quote);
+    shown = c.chunk_id;
     mountFiling(slot, { ticker, chunkId: c.chunk_id, quotes });
   };
   el.querySelectorAll(".source").forEach((b) => b.addEventListener("click", () => open(Number(b.dataset.i))));

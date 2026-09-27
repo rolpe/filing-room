@@ -80,7 +80,38 @@ export function docLabel(docId) {
 }
 
 const HEADINGS = { proxy: "Proxy statement", press_release: "Earnings press release", cover: "Cover page" };
-export const prettyHeading = (h) => HEADINGS[h] || h || "";
+const SMALL = new Set(["a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or", "the", "to", "with"]);
+const KEEP = new Set(["U.S.", "GAAP", "SEC", "MD&A", "CEO", "CFO", "LLC", "II", "III", "IV", "ESG", "AI", "IT", "R&D", "US"]);
+
+/** SEC headings arrive in capitals ("FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"); set them in title case. */
+export function titleCase(s) {
+  const letters = (s || "").replace(/[^A-Za-z]/g, "");
+  if (!letters || letters.replace(/[^A-Z]/g, "").length / letters.length < 0.7) return s || "";
+  return s
+    .split(/(\s+)/)
+    .map((w, i) => {
+      if (/^\s+$/.test(w) || KEEP.has(w.replace(/[,:;.]$/, "")) || !/[A-Z]/.test(w)) return w;
+      const lower = w.toLowerCase();
+      if (i > 0 && SMALL.has(lower.replace(/[,:;]$/, ""))) return lower;
+      return lower.replace(/^([^a-z]*)([a-z])/, (_, p, c) => p + c.toUpperCase());
+    })
+    .join("");
+}
+export const prettyHeading = (h) => HEADINGS[h] || titleCase(h || "");
+
+/** A quote as readers see it: table-row pipes become thin cell dividers; the verbatim text stays in the DOM. */
+export function quoteHTML(q) {
+  return String(q ?? "")
+    .split(" | ")
+    .map(esc)
+    .join('<span class="sep"><span class="sr-only"> | </span></span>');
+}
+
+/** "2026-09-27_1535" -> "Sep 27, 15:35" */
+export function fmtStamp(stamp) {
+  const m = /^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})/.exec(stamp || "");
+  return m ? `${fmtDate(m[1]).replace(/, \d{4}$/, "")}, ${m[2]}:${m[3]}` : stamp || "";
+}
 
 export function fmtDate(iso) {
   if (!iso) return "";
@@ -127,7 +158,7 @@ export function expectedText(expected) {
 const reduceMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function segs(segments) {
-  return segments.map((s) => (s.m ? `<mark class="quote">${esc(s.t)}</mark>` : esc(s.t))).join("");
+  return segments.map((s) => (s.m ? `<mark class="quote" data-q="${s.q ?? 0}">${esc(s.t)}</mark>` : esc(s.t))).join("");
 }
 
 const cellText = (cell) => cell.map((s) => s.t).join("").trim();
@@ -193,7 +224,10 @@ export async function mountFiling(el, { ticker, chunkId, quotes = [] }) {
   const body = el.querySelector(".filing__body");
   if (first && body) {
     const top = first.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - body.clientHeight / 3;
-    body.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? "auto" : "smooth" });
+    body.scrollTop = Math.max(0, top);
+    const r = first.getBoundingClientRect();
+    // Desktop panes have fixed height, so bring the quote on screen; on narrow screens the page scrolls and must not jump.
+    if (window.matchMedia("(min-width: 861px)").matches && (r.bottom > window.innerHeight || r.top < 0)) first.scrollIntoView({ block: "nearest" });
     if (!reduceMotion()) {
       el.querySelectorAll("mark.quote").forEach((m) => {
         m.classList.remove("sweep");
@@ -202,6 +236,11 @@ export async function mountFiling(el, { ticker, chunkId, quotes = [] }) {
       });
     }
   }
+}
+
+/** Mark (or unmark) one quote's highlight in a mounted filing pane: the hover half of the signature interaction. */
+export function focusQuote(el, qi, on) {
+  el?.querySelectorAll(`mark.quote[data-q="${qi}"]`).forEach((m) => m.classList.toggle("is-focus", on));
 }
 
 export function emptyState(iconName, title, body = "") {

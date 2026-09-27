@@ -1,4 +1,4 @@
-import { api, emptyState, esc, expectedText, icon } from "../lib.js";
+import { api, emptyState, esc, expectedText, icon, quoteHTML } from "../lib.js";
 
 const GRADE = { numeric: "Number, within 0.5%", judged: "Text, graded by model", abstain: "Should be “not found”", support_only: "Citation support only" };
 
@@ -26,10 +26,10 @@ export function mountGolden(root) {
             return `<li class="g-item ${done ? "is-done" : ""}">
               <button class="g-check" data-id="${esc(i.id)}" aria-pressed="${done}" aria-label="${done ? "Mark as not verified" : "Mark as verified"}">${icon(done ? "checkCircle" : "circle")}<span>${done ? "Verified" : "Verify"}</span></button>
               <div class="g-body">
-                <p class="g-meta"><span class="mono">${esc(i.id)}</span> · ${esc(i.category)} · ${esc(GRADE[i.grade] || i.grade)}</p>
                 <h3>${esc(i.question)}</h3>
+                <p class="g-meta"><span class="mono">${esc(i.id)}</span> · ${esc(i.category)} · ${esc(GRADE[i.grade] || i.grade)}</p>
                 <p class="g-expected">${esc(expectedText(i.expected))}</p>
-                ${quotes.slice(0, 3).map((q) => `<blockquote class="g-quote"><mark class="quote">${esc(q.quote)}</mark><cite>${esc(q.doc_id || "")}</cite></blockquote>`).join("")}
+                ${quotes.slice(0, 3).map((q) => `<blockquote class="g-quote"><mark class="quote">${quoteHTML(q.quote)}</mark><cite>${esc(q.doc_id || "")}</cite></blockquote>`).join("")}
                 ${!quotes.length && src.method ? `<p class="muted small">How it was checked: ${esc(src.method)}</p>` : ""}
                 ${i.note || src.note ? `<p class="muted small">Note: ${esc(i.note || src.note)}</p>` : ""}
               </div>

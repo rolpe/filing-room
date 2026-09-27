@@ -28,6 +28,8 @@ export function mountChecklist(root, ctx) {
       <aside class="pane pane--list" aria-label="Checklist">
         <div class="co-head"></div>
         <div class="seg filters" role="group" aria-label="Filter answers"></div>
+        <p class="list-hint small muted">Use the ↑ and ↓ keys to step through questions.</p>
+        <div class="list-key" aria-hidden="true"><span>Quote</span><span>Question</span><span>Graded</span></div>
         <nav class="q-list" aria-label="Questions"><p class="muted pad">Loading the checklist…</p></nav>
       </aside>
       <section class="pane pane--detail" aria-live="polite"></section>

@@ -1,4 +1,4 @@
-import { api, emptyState, esc, expectedText, gradeMark, icon, pct, statusMark, usd } from "../lib.js";
+import { api, emptyState, esc, expectedText, fmtStamp, gradeMark, icon, pct, statusMark, usd } from "../lib.js";
 
 const PASS_BAR = 85;
 
@@ -61,7 +61,7 @@ function runsTable(runs, selected) {
       .map((r) => {
         const m = r.metrics;
         return `<tr class="${r.name === selected ? "is-active" : ""}" data-run="${esc(r.name)}" tabindex="0">
-          <td class="nowrap"><strong>${esc(label(r))}</strong><br><span class="muted small">${esc(r.timestamp.replace("_", " "))}</span></td>
+          <td class="nowrap"><strong>${esc(label(r))}</strong><br><span class="muted small">${esc(fmtStamp(r.timestamp))}</span></td>
           <td class="note">${esc(r.note || "–")}</td>
           <td>${esc(r.tickers.join(", "))}</td>
           <td class="r num">${m.n_items}</td>

@@ -1,4 +1,4 @@
-import { api, emptyState, esc, fmtDate, icon, mountFiling } from "../lib.js";
+import { api, emptyState, esc, fmtDate, focusQuote, icon, mountFiling } from "../lib.js";
 
 export function mountMemo(root, ctx) {
   const { ticker, company } = ctx;
@@ -55,20 +55,30 @@ export function mountMemo(root, ctx) {
         </article>`;
       hint();
 
+      let current = null;
       const showSource = (qid) => {
         const src = m.sources[qid];
+        current = qid;
         main.querySelectorAll(".ref").forEach((b) => b.classList.toggle("is-active", b.dataset.ref === qid));
         const c = src.citations[0];
         side.innerHTML = `
           <div class="side-answer">
-            <p class="side-answer__num">Source ${num[qid]} · <span class="mono">${esc(qid)}</span></p>
             <h3>${esc(src.question)}</h3>
-            <p>${esc(src.answer)}</p>
+            <p class="side-answer__num">Source ${num[qid]} · <span class="mono">${esc(qid)}</span></p>
+            <p class="side-answer__text">${esc(src.answer)}</p>
           </div>
           <div class="filing-slot"></div>`;
         if (c) mountFiling(side.querySelector(".filing-slot"), { ticker, chunkId: c.chunk_id, quotes: src.citations.filter((x) => x.chunk_id === c.chunk_id).map((x) => x.quote) });
       };
-      main.querySelectorAll(".ref").forEach((b) => b.addEventListener("click", () => showSource(b.dataset.ref)));
+      main.querySelectorAll(".ref").forEach((b) => {
+        b.addEventListener("click", () => showSource(b.dataset.ref));
+        const mark = (on) => b.dataset.ref === current && side.querySelectorAll("mark.quote").forEach((x) => x.classList.toggle("is-focus", on));
+        b.addEventListener("mouseenter", () => mark(true));
+        b.addEventListener("mouseleave", () => mark(false));
+        b.addEventListener("focus", () => mark(true));
+        b.addEventListener("blur", () => mark(false));
+      });
+      if (order.length) showSource(order[0]); // land with a passage beside the text, like the checklist
       main.querySelectorAll(".flag").forEach((b) =>
         b.addEventListener("click", () => {
           const v = verdicts[Number(b.dataset.flag)];

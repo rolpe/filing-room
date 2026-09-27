@@ -188,19 +188,19 @@ def quote_spans(text: str, quote: str) -> list[tuple[int, int]]:
     return spans
 
 
-def _segments(text: str, start: int, spans: list[tuple[int, int]]) -> list[dict]:
-    """Split one line (starting at `start` in the chunk) into marked / unmarked runs."""
+def _segments(text: str, start: int, spans: list[tuple[int, int, int]]) -> list[dict]:
+    """Split one line (starting at `start` in the chunk) into runs; q = index of the quote marking it."""
     end = start + len(text)
-    cuts = sorted({start, end} | {max(start, min(end, x)) for s in spans for x in s})
+    cuts = sorted({start, end} | {max(start, min(end, x)) for s in spans for x in s[:2]})
     out = []
     for a, b in zip(cuts, cuts[1:]):
         if a == b:
             continue
-        marked = any(s < b and e > a for s, e in spans)
-        if out and out[-1]["m"] == marked:
+        q = next((qi for s, e, qi in spans if s < b and e > a), None)
+        if out and out[-1]["q"] == q:
             out[-1]["t"] += text[a - start:b - start]
         else:
-            out.append({"t": text[a - start:b - start], "m": marked})
+            out.append({"t": text[a - start:b - start], "m": q is not None, "q": q})
     return out
 
 
@@ -210,7 +210,7 @@ def passage_view(ticker: str, chunk_id: str, quotes: list[str]) -> dict | None:
     if not c:
         return None
     text = c["text"]
-    spans = [s for q in quotes for s in quote_spans(text, q)]
+    spans = [(s, e, qi) for qi, q in enumerate(quotes) for s, e in quote_spans(text, q)]
     blocks, pos, table = [], 0, None
     for line in text.split("\n"):
         start = pos
