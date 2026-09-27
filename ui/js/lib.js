@@ -169,8 +169,10 @@ function renderBlocks(blocks) {
     .map((b) => {
       if (b.type === "p") return `<p>${segs(b.segments)}</p>`;
       const width = Math.max(...b.rows.map((r) => r.length));
+      // The column-label row (years) near the top of a table stays visible while the quote is centred.
+      const yearRow = b.rows.slice(0, 3).findIndex((r) => r.length > 1 && r.every((c) => valueLike(cellText(c))));
       const rows = b.rows
-        .map((row) => {
+        .map((row, ri) => {
           const hit = row.some((cell) => cell.some((s) => s.m));
           let cells;
           if (row.length === 1 && width > 1) cells = `<td colspan="${width}" class="span">${segs(row[0])}</td>`;
@@ -178,7 +180,8 @@ function renderBlocks(blocks) {
             // A header row of years (or a label-less value row) lines up with the value columns on the right.
             cells = `<td></td>`.repeat(width - row.length) + row.map((c) => `<td>${segs(c)}</td>`).join("");
           } else cells = row.map((c) => `<td>${segs(c)}</td>`).join("") + `<td></td>`.repeat(width - row.length);
-          return `<tr${hit ? ' class="hit"' : ""}>${cells}</tr>`;
+          const cls = [hit ? "hit" : "", ri === yearRow ? "cols" : ""].filter(Boolean).join(" ");
+          return `<tr${cls ? ` class="${cls}"` : ""}>${cells}</tr>`;
         })
         .join("");
       return `<div class="table-wrap"><table>${rows}</table></div>`;
@@ -199,7 +202,7 @@ export async function mountFiling(el, { ticker, chunkId, quotes = [] }) {
     el.innerHTML = `<div class="filing__empty">${icon("alert")}<p>Couldn't open this passage: ${esc(e.message)}</p></div>`;
     return;
   }
-  const sub = data.subheading && data.subheading !== data.heading ? `<span class="filing__sub">${esc(data.subheading)}</span>` : "";
+  const sub = data.subheading && data.subheading !== data.heading ? `<span class="filing__sub">${esc(titleCase(data.subheading))}</span>` : "";
   el.innerHTML = `
     <header class="filing__head">
       <div class="filing__id">
