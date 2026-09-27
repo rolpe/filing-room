@@ -10,6 +10,7 @@ Everything is free except POST /api/ask, which calls Claude and is capped per da
 
 import json
 import os
+import re
 import threading
 import webbrowser
 from datetime import date
@@ -82,6 +83,7 @@ def companies() -> list[dict]:
             "filings": [{k: f[k] for k in ("doc_id", "form", "period", "filing_date", "url")} for f in filings],
             "periods": checklist.periods(t) if filings else None,
             "eval": {"run": name, "graded": len(graded), "correct": sum(r["correct"] for r in graded)} if rows else None,
+            "situation": co.get("why", ""),
             "has_run": _latest_run(t) is not None,
             "has_memo": any(config.RUNS.glob(f"{t}_*_memo.json")),
         })
@@ -154,6 +156,87 @@ def eval_detail(name: str) -> dict | None:
                                      "value_in_context")} | {"citations": _slim_citations(row["citations"])}
             for row in r.get("rows", [])]
     return {k: r[k] for k in ("timestamp", "label", "note", "tickers", "model", "metrics")} | {"name": name, "rows": rows}
+
+
+_QUOTE_MAP = str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-"})
+
+
+def _norm_index(text: str) -> tuple[str, list[int]]:
+    """Lowercase, unify quotes/dashes, drop whitespace, '$' and '|'; keep a map back to original offsets."""
+    chars, idx = [], []
+    for i, ch in enumerate(text.translate(_QUOTE_MAP)):
+        if ch.isspace() or ch in "$|":
+            continue
+        chars.append(ch.lower())
+        idx.append(i)
+    return "".join(chars), idx
+
+
+def quote_spans(text: str, quote: str) -> list[tuple[int, int]]:
+    """Where a (possibly '...'-elided) quote sits in the text, as original-offset spans."""
+    norm, idx = _norm_index(text)
+    spans, pos = [], 0
+    for frag in re.split(r"\.\.\.|…", quote):
+        f, _ = _norm_index(frag)
+        if len(f) < 3:
+            continue
+        i = norm.find(f, pos)
+        if i < 0:
+            return []
+        spans.append((idx[i], idx[i + len(f) - 1] + 1))
+        pos = i + len(f)
+    return spans
+
+
+def _segments(text: str, start: int, spans: list[tuple[int, int]]) -> list[dict]:
+    """Split one line (starting at `start` in the chunk) into marked / unmarked runs."""
+    end = start + len(text)
+    cuts = sorted({start, end} | {max(start, min(end, x)) for s in spans for x in s})
+    out = []
+    for a, b in zip(cuts, cuts[1:]):
+        if a == b:
+            continue
+        marked = any(s < b and e > a for s, e in spans)
+        if out and out[-1]["m"] == marked:
+            out[-1]["t"] += text[a - start:b - start]
+        else:
+            out.append({"t": text[a - start:b - start], "m": marked})
+    return out
+
+
+def passage_view(ticker: str, chunk_id: str, quotes: list[str]) -> dict | None:
+    ix = _index(ticker)
+    c = ix.by_id.get(chunk_id)
+    if not c:
+        return None
+    text = c["text"]
+    spans = [s for q in quotes for s in quote_spans(text, q)]
+    blocks, pos, table = [], 0, None
+    for line in text.split("\n"):
+        start = pos
+        pos += len(line) + 1
+        if line == "[TABLE]":
+            table = {"type": "table", "rows": []}
+            blocks.append(table)
+            continue
+        if line == "[/TABLE]":
+            table = None
+            continue
+        if not line.strip():
+            continue
+        if table is not None:
+            cells, cpos = [], start
+            for cell in line.split(" | "):
+                cells.append(_segments(cell, cpos, spans))
+                cpos += len(cell) + 3
+            table["rows"].append(cells)
+        else:
+            blocks.append({"type": "p", "segments": _segments(line, start, spans)})
+    base, _, n = chunk_id.rpartition("#")
+    prev_id, next_id = f"{base}#{int(n) - 1:03d}", f"{base}#{int(n) + 1:03d}"
+    return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "heading", "subheading", "url")},
+            "blocks": blocks, "found": bool(spans),
+            "prev_id": prev_id if prev_id in ix.by_id else None, "next_id": next_id if next_id in ix.by_id else None}
 
 
 def search_view(ticker: str, q: str, form: str | None) -> list[dict]:
@@ -287,6 +370,13 @@ class Handler(BaseHTTPRequestHandler):
             if len(route) == 2 and route[0] == "evals":
                 d = eval_detail(route[1])
                 return self._json(d) if d else self._error(404, "no such eval")
+            if len(route) == 2 and route[0] == "passage":
+                t = self._ticker(route[1])
+                cid = qs.get("id", [""])[0]
+                if not t or not cid.startswith(t + "_"):
+                    return self._error(404, "unknown passage")
+                p = passage_view(t, cid, qs.get("q", []))
+                return self._json(p) if p else self._error(404, "unknown passage")
             if len(route) == 2 and route[0] in ("checklist", "memo", "search"):
                 t = self._ticker(route[1])
                 if not t:
