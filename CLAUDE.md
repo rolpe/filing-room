@@ -24,7 +24,7 @@ A personal learning project: a diligence agent that answers a standard PE dilige
 - **Corpus per company:** last two 10-Ks, last four 10-Qs, latest DEF 14A (proxy), latest earnings-release 8-K (its EX-99.1). All from EDGAR. User-Agent with contact email lives in `.env` (`EDGAR_USER_AGENT`).
 - **Checklist** (`checklist/checklist.json`): 40 questions across revenue, margins, cash flow, balance sheet/debt, customers, competition, risk, management/comp, governance, litigation, M&A, capital allocation, people, and 3 abstention questions the filings shouldn't answer. Each records answer type, target period (`latest_fy`, `prior_fy`, `latest_fy_end`, `latest_release`, `latest_proxy`, `current`), where it should be found (forms + section topics), and how it's graded.
 - **Outputs:** (1) answered checklist as JSON and Markdown with a citation per answer (`./fr run`); (2) an IC-style memo (not built yet); (3) an eval report (`./fr eval`).
-- **Interface:** CLI only (`./fr`). No web UI in v1.
+- **Interface:** CLI (`./fr`) plus a local-only web UI (`./fr ui`, 127.0.0.1:8787), added at the user's request after v1. UI design follows PRODUCT.md, DESIGN.md and the Impeccable surface brief in `.impeccable/surfaces/`; the only paid UI action (Ask) is capped at $1/day.
 
 ## Architecture (keep it boring)
 

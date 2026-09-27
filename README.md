@@ -76,6 +76,14 @@ Abstention P / R: of the times the agent said "not found", how often that was ri
 4. **Batch API for evals** (50% cheaper; evals don't need instant answers).
 5. **Embeddings** only if keyword search stops being enough, e.g. on filings with less standard vocabulary.
 
+## Local UI
+
+`./fr ui` opens a research-tool view at http://127.0.0.1:8787: each checklist answer beside the SEC filing, the quote highlighted in place, plus the IC memo with per-sentence sources, eval history, free keyword search over the filings, and a golden-set review screen.
+
+- **Private by construction:** it listens on 127.0.0.1 only, rejects requests whose Host isn't the app itself (which blocks DNS rebinding), and requires a custom header on every POST (which blocks cross-site requests).
+- **Cost-capped:** asking a new question is the only paid action, with the cost shown and a server-side cap of $1/day (`UI_MAX_USD_PER_DAY`). Checklist runs and evals stay CLI-only.
+- **Design:** built with [Impeccable](https://impeccable.style) and benchmarked against AlphaSense, Hebbia and S&P Capital IQ. An independent reviewer audited it against a written design contract over three rounds. DESIGN.md records the system.
+
 ## Run it
 
 Needs [uv](https://docs.astral.sh/uv/) and an Anthropic API key. Fetching, parsing and indexing are free; only `ask`, `run`, `eval` and `memo` call the API (`FILINGROOM_MAX_USD` caps any single command, default $3).
@@ -88,6 +96,7 @@ cp .env.example .env         # add ANTHROPIC_API_KEY and your email for EDGAR's 
 ./fr memo BILL               # IC memo from the latest run, with claim check (~$0.15)
 ./fr eval --label my-change  # score the tuning set (~$2.40)
 ./fr retrieval               # free: is the right number in the retrieved passages?
+./fr ui                      # local web UI on 127.0.0.1:8787
 ```
 
 ## Layout

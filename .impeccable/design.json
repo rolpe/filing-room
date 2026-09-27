@@ -1,0 +1,618 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-27T18:00:00Z",
+  "title": "Design System: filing-room",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(100.0% 0.000 90)",
+        "cssVar": "--bg",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "paper-subtle": {
+        "role": "neutral",
+        "displayName": "Paper Subtle",
+        "canonical": "oklch(97.6% 0.003 265)",
+        "cssVar": "--bg-subtle",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5d5e5f",
+          "#7c7d7f",
+          "#9d9ea0",
+          "#c3c4c6",
+          "#edeef0"
+        ]
+      },
+      "paper-hover": {
+        "role": "neutral",
+        "displayName": "Paper Hover",
+        "canonical": "oklch(95.7% 0.006 255)",
+        "cssVar": "--bg-hover",
+        "tonalRamp": [
+          "#090b0e",
+          "#222427",
+          "#3e4043",
+          "#5b5e61",
+          "#7b7d81",
+          "#9c9fa2",
+          "#c1c4c8",
+          "#eceff3"
+        ]
+      },
+      "filing-paper": {
+        "role": "neutral",
+        "displayName": "Filing Paper",
+        "canonical": "oklch(98.8% 0.002 248)",
+        "cssVar": "--doc-bg",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5d5e5e",
+          "#7c7d7e",
+          "#9d9e9f",
+          "#c3c4c5",
+          "#edeeef"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(92.4% 0.008 261)",
+        "cssVar": "--line",
+        "tonalRamp": [
+          "#090b0e",
+          "#222428",
+          "#3d4044",
+          "#5b5e62",
+          "#7b7d82",
+          "#9c9ea3",
+          "#c1c4c9",
+          "#eceff4"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "oklch(86.2% 0.012 260)",
+        "cssVar": "--line-strong",
+        "tonalRamp": [
+          "#080b10",
+          "#21242a",
+          "#3c4046",
+          "#5a5e65",
+          "#797e85",
+          "#9a9fa6",
+          "#bfc4cc",
+          "#eaeff7"
+        ]
+      },
+      "graphite-ink": {
+        "role": "neutral",
+        "displayName": "Graphite Ink",
+        "canonical": "oklch(20.9% 0.013 264)",
+        "cssVar": "--ink",
+        "tonalRamp": [
+          "#080b11",
+          "#21242a",
+          "#3c4047",
+          "#5a5e65",
+          "#797d85",
+          "#9a9ea7",
+          "#c0c4cd",
+          "#eaeff7"
+        ]
+      },
+      "graphite-2": {
+        "role": "neutral",
+        "displayName": "Graphite 2",
+        "canonical": "oklch(41.5% 0.026 262)",
+        "cssVar": "--ink-2",
+        "tonalRamp": [
+          "#060b16",
+          "#1d2431",
+          "#38404e",
+          "#565e6d",
+          "#757e8d",
+          "#969faf",
+          "#bbc5d5",
+          "#e5efff"
+        ]
+      },
+      "graphite-3": {
+        "role": "neutral",
+        "displayName": "Graphite 3",
+        "canonical": "oklch(52.6% 0.024 262)",
+        "cssVar": "--ink-3",
+        "tonalRamp": [
+          "#060b15",
+          "#1e2430",
+          "#39404d",
+          "#565e6c",
+          "#757e8c",
+          "#969fae",
+          "#bcc5d4",
+          "#e6efff"
+        ]
+      },
+      "ocean": {
+        "role": "primary",
+        "displayName": "Deep Ocean",
+        "canonical": "oklch(46.4% 0.099 244)",
+        "cssVar": "--accent",
+        "tonalRamp": [
+          "#000831",
+          "#00254f",
+          "#00436f",
+          "#216391",
+          "#4483b4",
+          "#65a5d8",
+          "#8bccff",
+          "#b4f7ff"
+        ]
+      },
+      "ocean-deep": {
+        "role": "primary",
+        "displayName": "Ocean Deep",
+        "canonical": "oklch(39.4% 0.083 244)",
+        "cssVar": "--accent-ink",
+        "tonalRamp": [
+          "#000a2b",
+          "#002648",
+          "#0c4368",
+          "#306289",
+          "#5083ab",
+          "#71a5cf",
+          "#96cbf6",
+          "#bff6ff"
+        ]
+      },
+      "ocean-wash": {
+        "role": "primary",
+        "displayName": "Ocean Wash",
+        "canonical": "oklch(95.4% 0.013 244)",
+        "cssVar": "--accent-bg",
+        "tonalRamp": [
+          "#070c10",
+          "#1f252a",
+          "#3a4146",
+          "#585f64",
+          "#777e84",
+          "#989fa6",
+          "#bdc5cc",
+          "#e8f0f7"
+        ]
+      },
+      "ocean-wash-strong": {
+        "role": "primary",
+        "displayName": "Ocean Wash Strong",
+        "canonical": "oklch(90.1% 0.027 241)",
+        "cssVar": "--accent-bg-strong",
+        "tonalRamp": [
+          "#020c16",
+          "#182630",
+          "#33424d",
+          "#50606c",
+          "#6f808c",
+          "#90a1ae",
+          "#b5c7d5",
+          "#dff1ff"
+        ]
+      },
+      "marker": {
+        "role": "secondary",
+        "displayName": "Marker Yellow",
+        "canonical": "oklch(93.2% 0.118 97)",
+        "cssVar": "--mark",
+        "tonalRamp": [
+          "#1a0500",
+          "#352000",
+          "#523d00",
+          "#715c00",
+          "#927c0e",
+          "#b49e3d",
+          "#dac466",
+          "#ffef90"
+        ]
+      },
+      "marker-strong": {
+        "role": "secondary",
+        "displayName": "Marker Strong",
+        "canonical": "oklch(87.9% 0.162 91)",
+        "cssVar": "--mark-strong",
+        "tonalRamp": [
+          "#1d0200",
+          "#391d00",
+          "#5f3600",
+          "#805600",
+          "#a17600",
+          "#c49800",
+          "#ebbf1f",
+          "#ffec8d"
+        ]
+      },
+      "marker-row": {
+        "role": "secondary",
+        "displayName": "Marker Row",
+        "canonical": "oklch(95.3% 0.079 96)",
+        "cssVar": "--mark-row",
+        "tonalRamp": [
+          "#150800",
+          "#302200",
+          "#4c3f00",
+          "#6b5d23",
+          "#8b7d44",
+          "#ad9f64",
+          "#d3c489",
+          "#feefb2"
+        ]
+      },
+      "verified-green": {
+        "role": "tertiary",
+        "displayName": "Verified Green",
+        "canonical": "oklch(51.5% 0.112 157)",
+        "cssVar": "--ok",
+        "tonalRamp": [
+          "#001600",
+          "#003209",
+          "#005025",
+          "#0a7042",
+          "#399161",
+          "#5db382",
+          "#84daa6",
+          "#aeffd0"
+        ]
+      },
+      "verified-green-wash": {
+        "role": "tertiary",
+        "displayName": "Verified Green Wash",
+        "canonical": "oklch(95.5% 0.017 159)",
+        "cssVar": "--ok-bg",
+        "tonalRamp": [
+          "#050d09",
+          "#1d2721",
+          "#38433c",
+          "#56615a",
+          "#75817a",
+          "#96a29a",
+          "#bbc8c0",
+          "#e5f2ea"
+        ]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "oklch(53.4% 0.135 51)",
+        "cssVar": "--warn",
+        "tonalRamp": [
+          "#2b0000",
+          "#4c0100",
+          "#731f00",
+          "#964100",
+          "#bb6224",
+          "#e08449",
+          "#ffa96f",
+          "#ffd7a4"
+        ]
+      },
+      "caution-amber-wash": {
+        "role": "tertiary",
+        "displayName": "Caution Amber Wash",
+        "canonical": "oklch(96.4% 0.022 70)",
+        "cssVar": "--warn-bg",
+        "tonalRamp": [
+          "#110903",
+          "#2b2219",
+          "#473e34",
+          "#665c51",
+          "#867b70",
+          "#a79c90",
+          "#cec2b5",
+          "#f8ecdf"
+        ]
+      },
+      "error-red": {
+        "role": "tertiary",
+        "displayName": "Error Red",
+        "canonical": "oklch(50.0% 0.182 30)",
+        "cssVar": "--bad",
+        "tonalRamp": [
+          "#2d0000",
+          "#4f0000",
+          "#870000",
+          "#ad1a10",
+          "#d44536",
+          "#fb6957",
+          "#ff907c",
+          "#ffd0bf"
+        ]
+      },
+      "error-red-wash": {
+        "role": "tertiary",
+        "displayName": "Error Red Wash",
+        "canonical": "oklch(95.3% 0.019 26)",
+        "cssVar": "--bad-bg",
+        "tonalRamp": [
+          "#120807",
+          "#2d211f",
+          "#493c3b",
+          "#685a58",
+          "#887977",
+          "#aa9a98",
+          "#d0c0be",
+          "#fbeae8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page titles (Evals, Golden set) and the memo title."
+      },
+      "question": {
+        "displayName": "Question",
+        "purpose": "The selected checklist question atop the answer panel."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section heads and empty-state titles (16-17px)."
+      },
+      "answer": {
+        "displayName": "Answer",
+        "purpose": "Answer text at reading size, max 70ch."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "List rows, tables, general UI."
+      },
+      "reading": {
+        "displayName": "Reading",
+        "purpose": "Memo paragraphs, max 72ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Tabs, buttons, segment options, status and grade marks."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Metadata, fact labels, chart ticks."
+      },
+      "filing": {
+        "displayName": "Filing (Charter)",
+        "purpose": "Prose inside the filing pane."
+      },
+      "quote": {
+        "displayName": "Quote (Charter)",
+        "purpose": "Quoted filing text wherever it appears outside the pane: citation cards, search results, golden quotes."
+      },
+      "filing-table": {
+        "displayName": "Filing table",
+        "purpose": "Tables inside the filing pane: sans, tabular, right-aligned numbers."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Run ids, question ids, model names."
+      }
+    },
+    "shadows": [
+      {
+        "name": "segment-selected",
+        "value": "0 1px 2px rgb(21 24 30 / 0.1), 0 0 0 1px #e3e6eb",
+        "purpose": "Selected option in a segmented control."
+      },
+      {
+        "name": "floating",
+        "value": "0 1px 2px rgb(21 24 30 / 0.06), 0 6px 18px rgb(21 24 30 / 0.08)",
+        "purpose": "Chart tooltip, the only floating surface (--shadow)."
+      },
+      {
+        "name": "sticky-rule",
+        "value": "0 1px 0 #cdd2da",
+        "purpose": "Pinned year row inside filing tables."
+      },
+      {
+        "name": "quote-focus-ring",
+        "value": "0 0 0 2px #1b5e8c",
+        "purpose": "Ring on a quote's marks while its citation is hovered or focused."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The only easing (--ease), ease-out."
+      },
+      {
+        "name": "panel-enter",
+        "value": "180ms, opacity 0 to 1 and translateY(4px) to 0",
+        "purpose": "Answer panel and memo side answer entrance."
+      },
+      {
+        "name": "quote-sweep",
+        "value": "700ms, marker-strong band retracts across the quote once",
+        "purpose": "Signature: plays when a filing pane opens at a quote."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce disables all animation and transition",
+        "purpose": "Highlight shows instantly at rest."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "1100px",
+        "purpose": "Hide spend meter and company full names."
+      },
+      {
+        "name": "stacked",
+        "value": "860px",
+        "purpose": "Single-column scrolling page; tabs on their own row."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default bordered button for secondary actions.",
+      "html": "<button class=\"ds-btn\">Previous run</button>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:550;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong)} .ds-btn:hover{background:var(--bg-subtle)} .ds-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ocean-filled button for the one primary action on a view (Ask).",
+      "html": "<button class=\"ds-btn ds-btn--primary\">Ask</button>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:550;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong)} .ds-btn:hover{background:var(--bg-subtle)} .ds-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} .ds-btn--primary{background:var(--accent);border-color:var(--accent);color:#fff} .ds-btn--primary:hover{background:var(--accent-ink);border-color:var(--accent-ink)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Borderless button used in the filing pane header.",
+      "html": "<button class=\"ds-btn ds-btn--ghost\">sec.gov <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14 4h6v6\"/><path d=\"M20 4 10.5 13.5\"/><path d=\"M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10\"/></svg></button>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:550;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong)} .ds-btn:hover{background:var(--bg-subtle)} .ds-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-btn:disabled{opacity:.45;cursor:not-allowed} .ds-btn--ghost{border-color:transparent;background:transparent;color:var(--ink-2)} .ds-btn--ghost:hover{background:var(--bg-hover);color:var(--ink)}"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Search field with inset icon; focus turns the border into a 2px ocean outline.",
+      "html": "<label class=\"ds-search\"><span class=\"ds-search__icon\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.6-3.6\"/></svg></span><input type=\"search\" placeholder=\"net dollar-based retention\"></label>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-search{position:relative;display:flex;align-items:center;width:320px} .ds-search__icon{position:absolute;left:11px;color:var(--ink-3);display:flex} .ds-search input{width:100%;height:36px;padding:0 12px 0 34px;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:7px} .ds-search input::placeholder{color:#737b88} .ds-search input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}"
+    },
+    {
+      "name": "View Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Top-bar view tabs; active tab carries a 2px ocean underline.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-on\" href=\"#\">Checklist</a><a class=\"ds-tab\" href=\"#\">Memo</a><a class=\"ds-tab\" href=\"#\">Search</a><a class=\"ds-tab\" href=\"#\">Ask</a><span class=\"ds-tabs__sep\"></span><a class=\"ds-tab\" href=\"#\">Evals</a><a class=\"ds-tab\" href=\"#\">Golden set</a></nav>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-tabs{display:flex;height:56px;gap:2px;border-bottom:1px solid var(--line)} .ds-tab{display:flex;align-items:center;padding:0 11px;color:var(--ink-2);text-decoration:none;font-weight:550;font-size:13.5px;border-bottom:2px solid transparent;margin-bottom:-1px} .ds-tab:hover{color:var(--ink)} .ds-tab.is-on{color:var(--ink);border-bottom-color:var(--accent)} .ds-tab:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px} .ds-tabs__sep{width:1px;background:var(--line);margin:16px 8px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "chip",
+      "refersTo": "segmented",
+      "description": "Company switcher and checklist filters: options in a subtle trough; the chosen one sits on paper.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg__btn is-on\">All <span class=\"ds-n\">40</span></button><button class=\"ds-seg__btn\">Answered <span class=\"ds-n\">34</span></button><button class=\"ds-seg__btn\">Not found <span class=\"ds-n\">6</span></button><button class=\"ds-seg__btn\">Graded wrong <span class=\"ds-n\">1</span></button></div>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-seg{display:inline-flex;gap:2px;padding:3px;background:var(--bg-subtle);border:1px solid var(--line);border-radius:9px} .ds-seg__btn{font:inherit;font-size:13px;font-weight:550;color:var(--ink-2);border:0;background:transparent;padding:5px 10px;border-radius:7px;cursor:pointer} .ds-seg__btn:hover{color:var(--ink);background:var(--bg-hover)} .ds-seg__btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-seg__btn.is-on{background:var(--bg);color:var(--ink);box-shadow:0 1px 2px rgb(21 24 30 / .1),0 0 0 1px var(--line)} .ds-n{color:var(--ink-3)}"
+    },
+    {
+      "name": "Status Marks",
+      "kind": "custom",
+      "refersTo": "status-mark",
+      "description": "Icon plus word in the status tone; never color alone.",
+      "html": "<div class=\"ds-marks\"><span class=\"ds-mark ds-mark--ok\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m8.5 12.3 2.4 2.4 4.6-5\"/></svg>Verified quote</span><span class=\"ds-mark ds-mark--nf\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12h8\"/></svg>Not in filings</span><span class=\"ds-mark ds-mark--warn\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M10.3 4.2 2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z\"/><path d=\"M12 9.5v4\"/><path d=\"M12 17h.01\"/></svg>Unsupported</span></div>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-marks{display:flex;gap:24px} .ds-mark{display:inline-flex;align-items:center;gap:6px;font-weight:550;font-size:13px} .ds-mark--ok{color:var(--ok)} .ds-mark--nf{color:var(--neutral)} .ds-mark--warn{color:var(--warn)}"
+    },
+    {
+      "name": "Question Row",
+      "kind": "custom",
+      "refersTo": "question-row",
+      "description": "Checklist list row: status icon, two-line question, grade icon; selected row on ocean wash.",
+      "html": "<div class=\"ds-list\"><a class=\"ds-row is-active\" href=\"#\"><span class=\"ds-mark--ok\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"m8.5 12.3 2.4 2.4 4.6-5\"/></svg></span><span class=\"ds-row__t\">What was total revenue for the most recent fiscal year?</span><span class=\"ds-mark--ok\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg></span></a><a class=\"ds-row\" href=\"#\"><span class=\"ds-mark--nf\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M8 12h8\"/></svg></span><span class=\"ds-row__t\">Does the company disclose annualized recurring revenue (ARR)?</span><span></span></a></div>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-list{width:420px} .ds-row{display:grid;grid-template-columns:18px 1fr auto;gap:10px;align-items:start;padding:9px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14px} .ds-row:hover{background:var(--bg-hover)} .ds-row:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-row.is-active{background:var(--accent-bg)} .ds-row.is-active .ds-row__t{font-weight:550} .ds-row__t{line-height:1.4} .ds-mark--ok{color:var(--ok);padding-top:1px} .ds-mark--nf{color:var(--neutral);padding-top:1px}"
+    },
+    {
+      "name": "Citation Card",
+      "kind": "card",
+      "refersTo": "source-card",
+      "description": "A cited quote in Charter with its document; table pipes become thin dividers.",
+      "html": "<button class=\"ds-source is-active\"><span class=\"ds-source__q\">“Total revenue<span class=\"ds-sep\"></span>1,653,160<span class=\"ds-sep\"></span>1,462,570<span class=\"ds-sep\"></span>1,290,172”</span><span class=\"ds-source__doc\">10-K · FY2026 · Item 8. Financial Statements and Supplementary Data</span></button>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-source{width:460px;text-align:left;font:inherit;cursor:pointer;display:grid;gap:3px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--ink)} .ds-source:hover{border-color:var(--line-strong);background:var(--bg-subtle)} .ds-source:focus-visible{outline:2px solid var(--accent);outline-offset:2px} .ds-source.is-active{border-color:var(--accent);background:var(--accent-bg)} .ds-source__q{font-family:var(--font-doc);font-size:15px;line-height:1.45} .ds-source__doc{font-size:12px;color:var(--ink-3)} .ds-sep{display:inline-block;width:1px;height:.95em;background:currentColor;opacity:.35;margin:0 .55em;vertical-align:-.12em}"
+    },
+    {
+      "name": "Filing Pane with Quote Marker",
+      "kind": "custom",
+      "refersTo": "filing-pane",
+      "description": "The signature: the filing sheet with the quote marked in yellow; hover a citation to ring its marks.",
+      "html": "<section class=\"ds-filing\"><header class=\"ds-filing__head\"><p class=\"ds-filing__doc\">Annual report (10-K) · FY2026 · filed Aug 20, 2026</p><p class=\"ds-filing__sec\">Item 7. Management’s Discussion and Analysis</p></header><div class=\"ds-filing__body\"><p>We generate revenue primarily from subscription and transaction fees. <mark class=\"ds-quote\">Total revenue was $1.65 billion for fiscal 2026, an increase of 13% compared with fiscal 2025.</mark> Hover this pane to see the citation ring.</p></div></section>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-filing{width:560px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--doc-bg);overflow:hidden} .ds-filing__head{padding:10px 16px;border-bottom:1px solid var(--line);background:var(--bg)} .ds-filing__doc{margin:0;font-weight:600;font-size:13.5px} .ds-filing__sec{margin:0;font-size:12.5px;color:var(--ink-3)} .ds-filing__body{padding:18px 22px 22px;font-family:var(--font-doc);font-size:16px;line-height:1.6;color:#22262d} .ds-filing__body p{margin:0;max-width:72ch} .ds-quote{color:inherit;padding:1px;border-radius:2px;background-color:var(--mark);-webkit-box-decoration-break:clone;box-decoration-break:clone;background-image:linear-gradient(var(--mark-strong),var(--mark-strong));background-repeat:no-repeat;background-position:100% 0;background-size:0% 100%;animation:ds-sweep 700ms var(--ease)} .ds-filing:hover .ds-quote{box-shadow:0 0 0 2px var(--accent)} @keyframes ds-sweep{from{background-size:100% 100%}to{background-size:0% 100%}} @media (prefers-reduced-motion:reduce){.ds-quote{animation:none}}"
+    },
+    {
+      "name": "Memo Citation Number",
+      "kind": "chip",
+      "refersTo": "citation-ref",
+      "description": "Bracketed source number after a memo sentence; inverts to ocean when hovered or selected.",
+      "html": "<p class=\"ds-memo\">Revenue grew 13% to $1.65 billion in fiscal 2026.<button class=\"ds-ref\">1</button><button class=\"ds-ref is-active\">2</button></p>",
+      "css": ":host{--bg:#ffffff;--bg-subtle:#f6f7f9;--bg-hover:#eef1f5;--doc-bg:#fafbfc;--line:#e3e6eb;--line-strong:#cdd2da;--ink:#15181e;--ink-2:#444c5a;--ink-3:#636b79;--accent:#1b5e8c;--accent-ink:#154a6f;--accent-bg:#e9f1f8;--accent-bg-strong:#cfe1ef;--mark:#ffe98a;--mark-strong:#ffd23f;--mark-row:#fff0b3;--ok:#1d7a4c;--warn:#a8510a;--bad:#b42318;--neutral:#636b79;--font-ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif;--font-doc:Charter,'Bitstream Charter','Iowan Old Style','Sitka Text',Georgia,serif;--r-sm:6px;--r-md:10px;--ease:cubic-bezier(0.16,1,0.3,1);font:400 14px/1.5 var(--font-ui);color:var(--ink);font-variant-numeric:tabular-nums} .ds-memo{font-size:16px;line-height:1.7;max-width:60ch;margin:0} .ds-ref{display:inline-flex;align-items:center;justify-content:center;min-width:22px;min-height:20px;font:600 12.5px/1 var(--font-ui);color:var(--accent);cursor:pointer;background:var(--bg);border:1px solid var(--line-strong);border-radius:5px;padding:2px 5px;margin-left:3px;vertical-align:.15em} .ds-ref:hover,.ds-ref.is-active{background:var(--accent);border-color:var(--accent);color:#fff} .ds-ref:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Annotated Filing",
+    "overview": "filing-room is a research tool in the canon of AlphaSense, Hebbia and S&P Capital IQ: white document ground, graphite ink, hairline gray rules, and a single deep ocean-blue for anything you can act on. Every answer sits beside the SEC passage it came from, and the only warm color in the system is a yellow marker painted over quoted filing text. The viewer should read the page as a well-kept research binder, not a dashboard: dense lists on the left, the answer and its source on the right, measurement shown in plain tables and one line chart.\n\nDensity is moderate and legible at shared-screen resolution. The app speaks in the platform's system sans with tabular numerals everywhere; the filing itself speaks in Charter, a document serif, so the reader can always tell the tool's words from the filing's words. Light theme only, chosen from the use scene: a laptop screen shared over video calls in daytime.\n\nThe build refuses the AI-dashboard default: no KPI tiles, no chat bubbles, no decorative gradients. Motion is almost absent: a 180ms panel entrance and one highlight sweep across the quote. Nothing else moves.",
+    "keyCharacteristics": [
+      "White ground, graphite ink, 1px hairline rules for structure; tonal gray washes instead of cards.",
+      "One interactive accent (ocean blue); yellow marker reserved for quoted filing text.",
+      "Status as icon+word marks in fixed green / gray / amber, never as color alone.",
+      "System sans for the tool, Charter for the filing's words; tabular numerals throughout.",
+      "Two-pane split: list at roughly 38%, answer and filing pane in the rest.",
+      "Motion limited to a 180ms entrance and one quote sweep; reduced motion disables both."
+    ],
+    "rules": [
+      {
+        "name": "The Marker Rule",
+        "body": "Yellow belongs to the filing. It appears only on text quoted from an SEC filing (and the table row holding it); never on UI chrome, never as a status, never for emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Blue Rule",
+        "body": "Ocean blue means \"you can act on this\" or \"this is selected\". It is not used for headings, decoration, or data categories other than the single accuracy line.",
+        "section": "colors"
+      },
+      {
+        "name": "The Provenance Rule",
+        "body": "Charter is used for text quoted from a filing, wherever it appears: the filing pane, cited-quote cards, search results, golden quotes. Everything the tool itself says is in the sans. Filing tables are the exception: they use the sans with tabular numerals so columns align.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Numerals are tabular everywhere (set on body). Numbers in tables right-align.",
+        "section": "typography"
+      },
+      {
+        "name": "The Title-Case Rule",
+        "body": "SEC headings that arrive in all caps are set in title case (acronyms like GAAP, SEC, MD&A kept). No all-caps labels anywhere in the UI.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "Structure is drawn with 1px hairlines and gray washes. Containers do not float; only the tooltip does.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put every answer beside its source: the filing pane opens at the quoted passage with the marker painted.",
+      "**Do** set any text quoted from a filing in Charter, and everything the tool says in the system sans.",
+      "**Do** show status as icon plus word in the fixed tones (green verified, graphite-3 not in filings, amber unsupported); in dense lists use the icon with a column key and an accessible word.",
+      "**Do** draw structure with 1px hairlines (#e3e6eb) and gray washes; reserve the floating shadow for the tooltip.",
+      "**Do** keep motion to the 180ms ease-out panel entrance and the single quote sweep, and disable both under reduced motion.",
+      "**Do** keep numerals tabular and right-align numeric table columns.",
+      "**Do** title-case SEC all-caps headings and render table pipes in quotes as thin cell dividers."
+    ],
+    "donts": [
+      "**Don't** use marker yellow for anything but quoted filing text and the table row holding it.",
+      "**Don't** use ocean blue for decoration or headings; it means interactive or selected.",
+      "**Don't** build KPI tiles, chat bubbles, or decorative gradient fills; results are shown as sentences, tables and one chart.",
+      "**Don't** add hover lifts, parallax, or animated counters; nothing moves except the entrance and the sweep.",
+      "**Don't** set UI labels in all caps or with wide tracking.",
+      "**Don't** add a dark theme; the system is light-only for daytime screen sharing."
+    ]
+  }
+}
