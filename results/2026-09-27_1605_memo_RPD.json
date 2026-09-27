@@ -1,0 +1,235 @@
+{
+ "meta": {
+  "timestamp": "2026-09-27_1559",
+  "model": "claude-sonnet-5",
+  "source_run": "RPD_2026-09-27_1559.json",
+  "cost_usd": 0.1415
+ },
+ "note": "memo prompt v2: citation discipline (sample 1)",
+ "check": {
+  "n_sentences": 43,
+  "n_fact_sentences": 36,
+  "mechanical_violations": [],
+  "judged": [
+   {
+    "n": 0,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 1,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 2,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 3,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 4,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 5,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 6,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 7,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 8,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 9,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 10,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 11,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 12,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 13,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 14,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 15,
+    "verdict": "unsupported",
+    "reason": "Operating income fell from $35.035M to $11.6M; 'up from' misstates the direction of change."
+   },
+   {
+    "n": 16,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 17,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 18,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 19,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 20,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 21,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 22,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 23,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 24,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 25,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 26,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 27,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 28,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 29,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 30,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 31,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 32,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 33,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 34,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 35,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 36,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 37,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 38,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 39,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 40,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 41,
+    "verdict": "supported",
+    "reason": ""
+   },
+   {
+    "n": 42,
+    "verdict": "supported",
+    "reason": ""
+   }
+  ],
+  "unsupported": [
+   15
+  ],
+  "unsupported_rate": 2.3
+ }
+}
