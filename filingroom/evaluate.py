@@ -133,7 +133,8 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
             correct = ans["status"] == "not_found"
         need_judge_correct = grade == "judged" and ans["model_status"] == "answered"
         if grade == "judged" and not need_judge_correct:
-            correct = False
+            # not_found is wrong for a judged item, unless the golden says the filings only imply the answer
+            correct = bool(item.get("accept_not_found")) and ans["status"] == "not_found"
         if use_judge and ans["model_status"] == "answered":
             j = judge(item, ans, need_judge_correct, judge_meter, judge_model)
             supported, reason = j["supported"], j["reason"]
@@ -147,6 +148,9 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         rows = list(pool.map(work, items))
+    # Save the paid-for answers before anything else can fail.
+    config.RUNS.mkdir(exist_ok=True)
+    (config.RUNS / "last_eval_rows.json").write_text(json.dumps(rows))
     m = metrics(rows)
     m["cost_usd"] = {"answer": round(answer_meter.cost(), 4), "judge": round(judge_meter.cost(), 4)}
     m["cost_per_company_usd"] = round(answer_meter.cost() / len(tickers), 4)
@@ -170,7 +174,7 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
 def latest_result(tickers: list[str]) -> dict | None:
     for p in sorted(config.RESULTS.glob("*.json"), reverse=True):
         r = json.loads(p.read_text())
-        if sorted(r["tickers"]) == sorted(tickers):
+        if "rows" in r and sorted(r["tickers"]) == sorted(tickers):  # skip memo claim-check files
             return r
     return None
 
