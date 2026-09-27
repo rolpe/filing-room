@@ -444,10 +444,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   .strip { flex-wrap: wrap; }
   .strip a { margin-left: 0; }
   .strip__icon { display: none; }
-  .filters { display: flex; overflow-x: auto; }
+  .filters { display: flex; }
   .split, .split--memo { grid-template-columns: minmax(0, 1fr); height: auto; }
   .pane { min-width: 0; }
-  .filters { max-width: calc(100% - 40px); }
+  .filters { max-width: calc(100% - 40px); flex-wrap: wrap; overflow: visible; }
   .pane { overflow: visible; }
   .pane--list { border-right: 0; border-bottom: 1px solid var(--line); max-height: 46vh; overflow: auto; }
   .pane--detail, .pane--memo, .pane--side, .page { padding: 20px 16px 40px; }
