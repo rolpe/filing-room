@@ -26,7 +26,10 @@ def periods(ticker: str) -> dict:
                               for y in range(2020, 2030)]
                            if e < date.fromisoformat(proxy["filing_date"]))
     latest_doc = max(docs, key=lambda d: d["filing_date"])
+    periodic = max((d for d in docs if d["form"] in ("10-K", "10-Q")), key=lambda d: d["filing_date"])
     return {
+        "latest_periodic": periodic["period"], "latest_periodic_doc": periodic["doc_id"],
+        "latest_periodic_filed": periodic["filing_date"], "latest_release_filed": release["filing_date"],
         "latest_fy": tenks[0]["period"], "latest_fy_end": tenks[0]["report_date"],
         "latest_fy_doc": tenks[0]["doc_id"],
         "prior_fy": tenks[1]["period"], "prior_fy_end": tenks[1]["report_date"],
@@ -50,11 +53,14 @@ def describe_period(q: dict, P: dict) -> str:
         return f"the quarter {P['latest_release']}, covered by the latest earnings release ({P['latest_release_doc']})"
     if p == "latest_proxy":
         return f"fiscal year {P['latest_proxy']}, covered by the latest proxy statement ({P['latest_proxy_doc']})"
-    return f"the most recent period disclosed in any filing (latest filing: {P['latest_filing']})"
+    return (f"the most recent period disclosed in any filing. The newest filings are {P['latest_periodic_doc']} "
+            f"(filed {P['latest_periodic_filed']}) and {P['latest_release_doc']} (filed {P['latest_release_filed']}); "
+            "if excerpts from different filings disagree, the most recently filed one is current")
 
 
 def target_periods(q: dict, P: dict) -> list[str] | None:
     """Period labels to boost in retrieval (soft preference, never a hard filter)."""
     return {"latest_fy": [P["latest_fy"]], "latest_fy_end": [P["latest_fy"]],
             "prior_fy": [P["prior_fy"], P["latest_fy"]], "latest_release": [P["latest_release"]],
+            "current": [P["latest_periodic"], P["latest_release"]],
             }.get(q["period"])

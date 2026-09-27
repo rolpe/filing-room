@@ -16,3 +16,4 @@ One line per eval run: what changed, what moved.
 | 2026-09-27_1605 memo | RPD | memo prompt v2: citation discipline (sample 1) (claude-sonnet-5) | – | – | 2.3 (1/43 sentences) | – | – | 0.1415 |
 | 2026-09-27_1606 memo | RPD | memo prompt v2: citation discipline (sample 2) (claude-sonnet-5) | – | – | 2.3 (1/43 sentences) | – | – | 0.1502 |
 | 2026-09-27_1614 golden-v2 | BILL,RPD | golden set expanded to full checklist (38 -> 80 items); new baseline (claude-sonnet-5, medium, k=8, expand=2) | 91.0 | 92.5 | 0.0 | 61.5/100.0 | 100.0 | 1.9287/0.5246 |
+| 2026-09-27_1616 recency | BILL,RPD | current-period questions: boost newest 10-Q/10-K + 8-K, always search 10-Q/8-K, tell model newest filings win (claude-sonnet-5, medium, k=8, expand=2) | 93.6 | 94.0 | 0.0 | 61.5/100.0 | 100.0 | 1.9122/0.5083 |

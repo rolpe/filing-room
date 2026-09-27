@@ -72,11 +72,16 @@ def complete_json(model: str, system: str, user: str, schema: dict, meter: CostM
         output_config["effort"] = effort
     kwargs = dict(model=model, max_tokens=max_tokens, system=system,
                   messages=[{"role": "user", "content": user}], output_config=output_config)
-    if model in FALLBACK_MODELS:
-        resp = client().beta.messages.create(betas=["server-side-fallback-2026-07-01"],
-                                             fallbacks="default", **kwargs)
-    else:
-        resp = client().messages.create(**kwargs)
+    try:
+        if model in FALLBACK_MODELS:
+            resp = client().beta.messages.create(betas=["server-side-fallback-2026-07-01"],
+                                                 fallbacks="default", **kwargs)
+        else:
+            resp = client().messages.create(**kwargs)
+    except anthropic.BadRequestError as e:
+        if "credit balance" in str(e):
+            raise SystemExit("Out of Anthropic API credits: add credits under Billing in the Console, then rerun.")
+        raise
     meter.add(resp.model, resp.usage)
     if resp.stop_reason == "refusal":
         raise LLMError(f"refusal: {getattr(resp.stop_details, 'category', None)}")

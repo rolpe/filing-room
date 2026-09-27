@@ -84,7 +84,10 @@ def _excerpt(c: dict) -> str:
 def retrieve(ix: Index, q: dict, P: dict, k: int, expand: int = DEFAULT_EXPAND) -> list:
     query = f"{q['question']} {q.get('search', '')}"
     where = q.get("where", {})
-    hits = ix.search(query, k=k, forms=where.get("forms"), topics=where.get("topics"),
+    forms = where.get("forms")
+    if forms and q.get("period") == "current":
+        forms = sorted(set(forms) | {"10-Q", "8-K"})  # the latest fact can be in any recent filing
+    hits = ix.search(query, k=k, forms=forms, topics=where.get("topics"),
                      periods=checklist.target_periods(q, P))
     if not expand:
         return hits
