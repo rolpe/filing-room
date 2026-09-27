@@ -229,7 +229,7 @@ A near-neutral cool-gray document palette with one blue for interaction, one yel
 
 ### Tertiary (status)
 - **Verified Green** (verified-green) with **Verified Green Wash** (verified-green-wash): "Verified quote", "Graded correct", a verified golden item.
-- **Caution Amber** (caution-amber) with **Caution Amber Wash** (caution-amber-wash): "Unsupported", memo sentences flagged by the claim check (wavy underline), partial citation support, and the "held out" company tag.
+- **Caution Amber** (caution-amber) with **Caution Amber Wash** (caution-amber-wash): "Unsupported", memo sentences flagged by the claim check (wavy underline), partial citation support.
 - **Error Red** (error-red) with **Error Red Wash** (error-red-wash): "Graded wrong", request errors.
 
 ### Neutral
@@ -301,7 +301,7 @@ Flat by default. Depth comes from tonal layering (paper, paper-subtle, filing-pa
 
 ## Shapes
 
-Gentle, small radii that stay out of the way: 6px on list rows and citation cards, 7px on buttons, inputs and segment options, 9px on segmented troughs, 10px on the filing pane, 5px on memo citation numbers, 2px on marker highlights, and a full pill only for the "held out" tag. Borders are 1px; the empty filing slot uses a 1px dashed hairline-strong border. Icons share one stroke family: 24px grid, 1.75 stroke, round caps and joins, drawn at 16px (14-15px inside buttons and the strip).
+Gentle, small radii that stay out of the way: 6px on list rows and citation cards, 7px on buttons, inputs and segment options, 9px on segmented troughs, 10px on the filing pane, 5px on memo citation numbers, 2px on marker highlights. Borders are 1px; the empty filing slot uses a 1px dashed hairline-strong border. Icons share one stroke family: 24px grid, 1.75 stroke, round caps and joins, drawn at 16px (14-15px inside buttons and the strip).
 
 ## Components
 
@@ -342,7 +342,7 @@ Bracketed source numbers as small chips: 5px radius, paper fill, hairline-strong
 Paper fill, hairline-strong border, 7px radius, 14px text; search is 36px tall with a 34px left inset for the search icon. Focus replaces the border with a 2px ocean outline.
 
 ### Data tables and chart
-Tables are full-width, 13.5px, 12px graphite-2 headers over a hairline-strong rule, hairline row rules, right-aligned tabular numbers; row hover paper-subtle, selected ocean-wash. The eval chart is one ocean line with 5px dots (held-out runs in graphite ink), hairline grid, a dashed graphite-3 pass-bar line, and the floating tooltip.
+Tables are full-width, 13.5px, 12px graphite-2 headers over a hairline-strong rule, hairline row rules, right-aligned tabular numbers; row hover paper-subtle, selected ocean-wash. The eval chart is one ocean line with 5px dots (the single Box test run in graphite ink), hairline grid, a dashed graphite-3 pass-bar line, and the floating tooltip.
 
 ## Do's and Don'ts
 

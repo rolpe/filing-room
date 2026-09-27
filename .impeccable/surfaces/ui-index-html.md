@@ -11,7 +11,7 @@ Mode: Operate. A presenter-driven research tool viewed on a laptop and over scre
 
 Audience and job: the author demos to a mix of PE/finance people and technical interviewers; the viewer must see an answer, the exact filing passage behind it, and the measured accuracy within minutes. Secondary: the author's own golden-set review.
 
-Proof on hand: real API data only (checklists, memos, evals, search, golden items). Paid action: Ask (BILL, RPD), cost shown before and after, $1/day cap. Box is read-only.
+Proof on hand: real API data only (checklists, memos, evals, search, golden items). Paid action: Ask (all three companies), cost shown before and after, $1/day cap. Box's Checklist shows its single recorded test run, which Ask never changes.
 
 Memorable moment: click an answer and the filing opens beside it with the quote highlighted in place.
 

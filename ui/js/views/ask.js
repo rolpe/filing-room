@@ -4,26 +4,19 @@ import { api, emptyState, esc, icon, usd } from "../lib.js";
 const EXAMPLES = {
   BILL: ["What was BILL's net dollar-based retention rate in fiscal 2026?", "How much did BILL spend on share repurchases in fiscal 2026?"],
   RPD: ["Who is Rapid7's chief executive officer?", "What was Rapid7's ARR at the end of the latest quarter?"],
+  BOX: ["What was Box's net retention rate in the latest quarter?", "How much did Box spend on share repurchases in fiscal 2026?"],
 };
 const history = {}; // per company, this browser session only
 
 export function mountAsk(root, ctx) {
   const { ticker, company } = ctx;
-  if (company.split === "holdout") {
-    root.innerHTML = `<div class="page">${emptyState(
-      "info",
-      "Asking is off for Box",
-      "Box is the held-out company: it was run once, on a frozen system, to measure accuracy honestly. Its answers are on the Checklist tab.",
-    )}</div>`;
-    return {};
-  }
   const past = (history[ticker] ||= []);
   root.innerHTML = `
     <div class="split">
       <aside class="pane pane--list">
         <form class="ask">
           <h1 class="co-name">Ask ${esc(company.name)} a question</h1>
-          <p class="muted small">Answered only from ${esc(company.name)}'s SEC filings, with a quote checked against the source. Each question is a live call to Claude.</p>
+          <p class="muted small">Answered only from ${esc(company.name)}'s SEC filings, with a quote checked against the source. Each question is a live call to Claude.${company.split === "holdout" ? " Live answers are separate from Box's recorded test run, which stays unchanged." : ""}</p>
           <label class="sr-only" for="ask-q">Your question</label>
           <textarea id="ask-q" name="q" rows="4" maxlength="500" placeholder="e.g. ${esc(EXAMPLES[ticker]?.[0] || "")}"></textarea>
           <div class="ask__row">

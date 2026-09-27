@@ -6,6 +6,7 @@ Private by construction:
   - POSTs must carry an X-Filing-Room header, which a cross-site page can't send without a CORS
     preflight this server never grants.
 Everything is free except POST /api/ask, which calls Claude and is capped per day (UI_MAX_USD_PER_DAY).
+Ask never writes checklist runs or eval results, so it is open for every company, including Box.
 """
 
 import json
@@ -410,8 +411,6 @@ class Handler(BaseHTTPRequestHandler):
                 t = self._ticker(parts[2])
                 if not t:
                     return self._error(404, "unknown ticker")
-                if config.companies()[t]["split"] == "holdout":
-                    return self._error(403, f"{t} is the held-out company; ask questions from the CLI with --final")
                 question = str(body.get("question", "")).strip()
                 if not question:
                     return self._error(400, "empty question")

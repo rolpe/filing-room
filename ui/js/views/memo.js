@@ -94,7 +94,7 @@ export function mountMemo(root, ctx) {
               "doc",
               `No memo for ${company.name}`,
               company.split === "holdout"
-                ? "Box was the held-out company: the system was run on it exactly once, as an eval, so no memo was generated. Its checklist answers are on the Checklist tab."
+                ? "Box was tested with a single checklist run and no memo was generated for it. Its answers are on the Checklist tab."
                 : `Generate one from the command line with <code>./fr memo ${esc(ticker)}</code>.`,
             )
           : emptyState("alert", "Couldn't load the memo", esc(e.message));

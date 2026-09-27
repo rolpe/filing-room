@@ -35,7 +35,7 @@ Companies: BILL (June fiscal year; Starboard cooperation agreement), Rapid7 / RP
 ## Capabilities and Constraints
 
 Surfaces backed by the existing API (`filingroom/server.py`):
-- Companies overview: situation, fiscal year-end, filings loaded, eval score, tune vs. holdout.
+- Companies overview: situation, fiscal year-end, filings loaded, eval score.
 - Checklist per company: 40 questions by category; answer, status (answered / not_found / unsupported), value, period, confidence; verified quotes with filing links; the eval's grade against the golden answer.
 - IC memo: sections of sentences, each citing checklist answers; sentences flagged by the claim check; open diligence questions.
 - Eval history: metrics across runs (accuracy, citation support, abstention, retrieval, cost), failures per run, memo claim checks.
@@ -46,8 +46,9 @@ Surfaces backed by the existing API (`filingroom/server.py`):
 Constraints:
 - Local only: loopback bind, Host-header check, custom header required on POSTs.
 - Ask is the only paid action, capped server-side at $1/day (`UI_MAX_USD_PER_DAY`); the UI must make cost explicit before and after. No UI path may trigger full checklist runs or evals.
-- Box is read-only (held out); Ask is disabled for it.
-- Terminology to keep: checklist, golden set, quote / citation, verified, not found, unsupported, held-out company, eval run, fiscal period labels like FY2026 and Q2 FY2027.
+- Box was tested once and its recorded test run is what its Checklist shows; Ask is open for all three companies and never changes recorded runs. Re-running Box's checklist or eval stays behind the CLI's `--final` flag.
+- UI copy avoids ML jargon such as "held-out": say "tuned on BILL and Rapid7, then tested once on Box" (user decision, 2026-09-27). The term stays in README and technical write-ups.
+- Terminology to keep: checklist, golden set, quote / citation, verified, not found, unsupported, eval run, fiscal period labels like FY2026 and Q2 FY2027.
 
 ## Brand Commitments
 

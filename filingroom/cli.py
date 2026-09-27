@@ -117,7 +117,7 @@ def main() -> None:
             print(c["text"] if a.full else c["text"][:300].replace("\n", " ⏎ "))
 
     elif a.cmd == "ask":
-        t = _tickers(a.ticker, a.final)[0]
+        t = _tickers(a.ticker, a.final, allow_holdout=True)[0]  # asking never writes runs or results
         qs = checklist.by_id()
         q = qs.get(a.question) or {"id": "adhoc", "category": "Ad hoc", "question": a.question,
                                    "answer_type": "text", "period": "current", "where": {}}

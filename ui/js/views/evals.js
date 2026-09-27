@@ -3,12 +3,16 @@ import { api, emptyState, esc, expectedText, fmtStamp, gradeMark, icon, pct, sta
 const PASS_BAR = 85;
 
 function groupOf(run) {
-  if (run.tickers.includes("BOX")) return "Held-out company";
+  if (isBoxTest(run)) return "Box: single test run";
   return run.metrics.n_items > 40 ? "Full checklist (80 items)" : "First golden set (38 items)";
 }
 
+function isBoxTest(run) {
+  return run.tickers.length === 1 && run.tickers[0] === "BOX";
+}
+
 function label(run) {
-  return run.label || run.name;
+  return isBoxTest(run) ? "Box test" : run.label || run.name;
 }
 
 /** Accuracy by run: one series, grouped by golden set, with the pre-registered pass bar. */
@@ -33,7 +37,7 @@ function chart(runs) {
     pts.forEach((p) => {
       marks += `<g class="c-pt" tabindex="0" data-run="${esc(p.r.name)}" role="button" aria-label="${esc(label(p.r))}: ${pct(p.r.metrics.accuracy)} accuracy">
         <rect class="c-hit" x="${p.x - step / 2}" y="${T}" width="${step}" height="${H - T - B}"/>
-        <circle class="c-dot ${g.name.startsWith("Held") ? "c-dot--hold" : ""}" cx="${p.x}" cy="${p.yv}" r="5"/>
+        <circle class="c-dot ${g.name.startsWith("Box") ? "c-dot--hold" : ""}" cx="${p.x}" cy="${p.yv}" r="5"/>
         <text class="c-val" x="${p.x}" y="${p.yv - 11}" text-anchor="middle">${pct(p.r.metrics.accuracy)}</text>
       </g>`;
       xlabels += `<text class="c-x" x="${p.x}" y="${H - B + 16}" text-anchor="middle">${esc(label(p.r).slice(0, 14))}</text>`;
@@ -113,7 +117,7 @@ export function mountEvals(root, ctx) {
       page.innerHTML = `
         <header class="page__head">
           <h1>How the system is measured</h1>
-          <p class="lede">Every eval run answers the golden set: hand-checked answers drawn from the filings. Numbers must match within 0.5%, text answers are compared by a separate grading model, and every quote is checked word-for-word against the filing by code. Box was held out: the system was frozen before Box was ever parsed, then run once.</p>
+          <p class="lede">Every eval run answers the golden set: hand-checked answers drawn from the filings. Numbers must match within 0.5%, text answers are compared by a separate grading model, and every quote is checked word-for-word against the filing by code. The system was tuned on BILL and Rapid7, frozen, and then run once on Box with no changes afterwards, so the Box score shows how it does on a company it wasn't tuned on.</p>
         </header>
         <section class="block">
           <h2>Accuracy by run</h2>

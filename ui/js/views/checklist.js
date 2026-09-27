@@ -128,7 +128,7 @@ export function mountChecklist(root, ctx) {
       const when = src.name ? fmtDate(src.name.match(/\d{4}-\d{2}-\d{2}/)?.[0]) : "";
       head.insertAdjacentHTML(
         "beforeend",
-        `<p class="muted small">${src.kind === "run" ? `Answers from the checklist run of ${when}` : `Answers from the one held-out eval run (${when})`}</p>`,
+        `<p class="muted small">${src.kind === "run" ? `Answers from the checklist run of ${when}` : `Answers from ${esc(company.name.replace(/,? Inc\.?$/, ""))}'s single test run (${when})`}</p>`,
       );
       renderFilters();
       renderList();

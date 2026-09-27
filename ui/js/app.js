@@ -34,7 +34,7 @@ function renderTop(route) {
       const name = c.name.replace(/,? Inc\.?$/, "");
       const rest = name.toUpperCase().startsWith(k) ? name.slice(k.length).trim() : name;
       return `<a class="co ${on ? "is-on" : ""}" href="#/${k}/${companyView}" title="${esc(c.name)}" ${on ? 'aria-current="page"' : ""}>
-        <strong>${k}</strong>${rest ? `<span>${esc(rest)}</span>` : ""}${c.split === "holdout" ? '<em class="tag">held out</em>' : ""}
+        <strong>${k}</strong>${rest ? `<span>${esc(rest)}</span>` : ""}
       </a>`;
     })
     .join("");
@@ -60,7 +60,7 @@ function renderStrip(evals) {
     return;
   }
   el.innerHTML = `${icon("checkCircle", "strip__icon")}
-    <p>Held-out test on Box, run once on a frozen system: <strong><span class="num">${box.correct}</span> of <span class="num">${box.graded}</span> answers correct (${pct(hold.metrics.accuracy)})</strong>, and ${pct(hold.metrics.citation_support_rate)} of cited quotes supported their answers. The pass bar, set before building, was 85%.</p>
+    <p>Tested once on Box after tuning on BILL and Rapid7: <strong><span class="num">${box.correct}</span> of <span class="num">${box.graded}</span> answers correct (${pct(hold.metrics.accuracy)})</strong>, and ${pct(hold.metrics.citation_support_rate)} of cited quotes supported their answers. The pass bar, set before building, was 85%.</p>
     <a href="#/evals/${encodeURIComponent(hold.name)}">How it's measured ${icon("arrowRight")}</a>`;
 }
 
