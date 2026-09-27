@@ -44,14 +44,14 @@ def search(q: str, limit: int = 12) -> list[dict]:
         return 4 if q in name else None
     scored = [(rk, i, r) for i, r in enumerate(rows) if (rk := rank(r)) is not None]  # i keeps SEC's size order
     scored.sort(key=lambda x: (x[0], x[1]))
-    return [{"ticker": r["ticker"], "name": r["title"], "cik": r["cik_str"]} for _, _, r in scored[:limit]]
+    return [{"ticker": r["ticker"], "name": nice_name(r["title"]), "cik": r["cik_str"]} for _, _, r in scored[:limit]]
 
 
 def _lookup(ticker: str) -> dict:
     t = ticker.upper()
     for r in _sec_tickers():
         if r["ticker"].upper() == t:
-            return {"ticker": t, "name": r["title"], "cik": r["cik_str"]}
+            return {"ticker": t, "name": nice_name(r["title"]), "cik": r["cik_str"]}
     raise KeyError(f"No SEC-registered company with ticker {t}")
 
 
