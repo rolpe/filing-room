@@ -23,6 +23,11 @@ NO_EFFORT_MODELS = {"claude-haiku-4-5"}
 
 _client: anthropic.Anthropic | None = None
 
+# Hard stop for any single ./fr command. Override with FILINGROOM_MAX_USD in .env.
+MAX_USD_PER_COMMAND = float(os.environ.get("FILINGROOM_MAX_USD", "3.00"))
+_command_spend = 0.0
+_spend_lock = threading.Lock()
+
 
 def client() -> anthropic.Anthropic:
     global _client
@@ -39,6 +44,10 @@ class CostMeter:
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     def add(self, model: str, usage) -> None:
+        global _command_spend
+        pin, pout = PRICES.get(model, PRICES["claude-opus-5"])
+        with _spend_lock:
+            _command_spend += ((usage.input_tokens or 0) * pin + (usage.output_tokens or 0) * pout) / 1e6
         with self._lock:
             m = self.by_model.setdefault(model, {"calls": 0, "input": 0, "output": 0,
                                                  "cache_read": 0, "cache_write": 0})
@@ -67,6 +76,9 @@ class LLMError(Exception):
 def complete_json(model: str, system: str, user: str, schema: dict, meter: CostMeter,
                   effort: str | None = None, max_tokens: int = 16000) -> dict:
     """One request, schema-constrained JSON back. Raises LLMError on refusal or truncation."""
+    if _command_spend >= MAX_USD_PER_COMMAND:
+        raise SystemExit(f"Stopped: this command has spent ${_command_spend:.2f}, over the "
+                         f"${MAX_USD_PER_COMMAND:.2f} cap (FILINGROOM_MAX_USD).")
     output_config: dict = {"format": {"type": "json_schema", "schema": schema}}
     if effort and model not in NO_EFFORT_MODELS:
         output_config["effort"] = effort
