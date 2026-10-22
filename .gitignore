@@ -12,3 +12,6 @@ runs/
 .impeccable/config.local.json
 .impeccable/hook.cache.json
 .impeccable/questions/
+
+# Personal drafts, kept out of the public repo
+drafts/
