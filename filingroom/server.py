@@ -22,7 +22,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import answer, checklist, config, edgar, financials, findings, llm, memo, pipeline, present, store
+from . import answer, checklist, config, devtools, edgar, financials, findings, llm, memo, pipeline, present, store
 from .index import Index
 
 WEB_DIST = config.ROOT / "web" / "dist"
@@ -103,8 +103,10 @@ def _charge(path, usd: float) -> None:
 
 def usage_view() -> dict:
     ask, run = _ledger(ASK_LEDGER), _ledger(RUN_LEDGER)
-    days = [{"date": d, "questions_usd": round(ask.get(d, 0.0), 4), "screening_usd": round(run.get(d, 0.0), 4)}
-            for d in sorted(set(ask) | set(run), reverse=True)]
+    ev = devtools.ledger_by_day() if devtools.ENABLED else {}
+    days = [{"date": d, "questions_usd": round(ask.get(d, 0.0), 4), "screening_usd": round(run.get(d, 0.0), 4),
+             "evals_usd": round(ev.get(d, 0.0), 4)}
+            for d in sorted(set(ask) | set(run) | set(ev), reverse=True)]
     by_company = []
     for t in store.coverage():
         run_meta = (store.get(t, "run.json") or {}).get("meta", {})
@@ -118,7 +120,8 @@ def usage_view() -> dict:
         by_company.append({"ticker": t, "name": (store.get(t, "company.json") or {}).get("name", t),
                            "screening_usd": round(screening, 4), "questions": len(qs),
                            "questions_usd": round(sum(q.get("cost_usd", 0) for q in qs), 4)})
-    return {"days": days, "total_usd": round(sum(ask.values()) + sum(run.values()), 4),
+    return {"days": days, "total_usd": round(sum(ask.values()) + sum(run.values()) + sum(ev.values()), 4),
+            "evals": devtools.spend_view() if devtools.ENABLED else None,
             "caps": {"questions": {"today_usd": round(ask.get(_today(), 0.0), 4), "cap_usd": ASK_MAX_USD_PER_DAY,
                                    "estimate_usd": ASK_ESTIMATE_USD},
                      "screening": {"today_usd": round(run.get(_today(), 0.0), 4), "cap_usd": RUN_MAX_USD_PER_DAY,
@@ -420,6 +423,14 @@ def _busy_ticker() -> str | None:
     return next((t for t, j in _running.items() if j.get("state") == "running"), None)
 
 
+def _screening_busy_message() -> str | None:
+    t = _busy_ticker()
+    return f"{t} is being screened. One paid job at a time: try again when it finishes." if t else None
+
+
+devtools.other_busy = _screening_busy_message
+
+
 def estimate(t: str | None) -> dict:
     """Cost of what's left to do for this company (a fresh screening if nothing is stored)."""
     total = len(_qs())
@@ -445,7 +456,7 @@ def preview_view(t: str) -> dict:
             "estimate": estimate(p["ticker"] if ins else None),
             "cap": {"today_usd": round(led, 4), "cap_usd": RUN_MAX_USD_PER_DAY,
                     "remaining_usd": round(max(0.0, RUN_MAX_USD_PER_DAY - led), 4)},
-            "busy": _busy_ticker()}
+            "busy": _busy_ticker() or ("an evaluation run" if devtools.running() else None)}
 
 
 def search_view(q: str) -> list[dict]:
@@ -464,6 +475,8 @@ def _check_can_start(t: str, confirm_usd: float) -> dict:
     busy = _busy_ticker()
     if busy:
         raise Busy(f"{busy} is being screened. One company at a time; try again when it finishes.")
+    if devtools.running():
+        raise Busy(devtools.busy_message())
     return est
 
 
@@ -650,6 +663,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(coverage_view())
             if r == ["usage"]:
                 return self._json(usage_view())
+            if r[:1] == ["dev"]:
+                return self._dev_get(r[1:], arg)
             if r == ["sec", "search"]:
                 return self._json(search_view(arg("q")))
             if len(r) == 3 and r[:2] == ["sec", "preview"]:
@@ -688,6 +703,43 @@ class Handler(BaseHTTPRequestHandler):
         except SystemExit as e:  # e.g. an index that hasn't been built
             return self._error(409, str(e))
 
+    def _dev_get(self, r: list[str], arg):
+        """Developer tools (evaluation area). One switch: when off, everything under /api/dev/ is a 404."""
+        if not devtools.ENABLED or r[:1] != ["evals"]:
+            return self._error(404, "not found")
+        r = r[1:]
+        if r == []:
+            return self._json(devtools.overview())
+        if r == ["config"]:
+            return self._json(devtools.config_view())
+        if r == ["golden"]:
+            return self._json(devtools.golden_view())
+        if r == ["job"]:
+            return self._json({"job": devtools.job_view(), "spend": devtools.spend_view()})
+        if len(r) == 3 and r[0] == "runs":
+            return self._json(devtools.detail(r[1], r[2]))
+        if len(r) == 5 and r[0] == "runs" and r[3] == "items":
+            return self._json(devtools.item(r[1], r[2], r[4]))
+        if len(r) == 4 and r[0] == "runs" and r[3] == "passage":
+            return self._json(devtools.passage(r[1], r[2], arg("item"), arg("chunk")))
+        return self._error(404, "not found")
+
+    def _dev_post(self, r: list[str], body: dict):
+        if not devtools.ENABLED or r[:1] != ["evals"]:
+            return self._error(404, "not found")
+        r = r[1:]
+        spec = body.get("spec") if isinstance(body.get("spec"), dict) else {}
+        if r == ["estimate"]:
+            return self._json(devtools.estimate(spec))
+        if r == ["start"]:
+            if _busy_ticker():
+                raise Busy(_screening_busy_message())
+            return self._json(devtools.start(spec, float(body.get("confirm_usd") or 0)))
+        if r == ["retrieval"]:
+            tickers = body.get("tickers") if isinstance(body.get("tickers"), list) else []
+            return self._json(devtools.retrieval([str(t) for t in tickers]))
+        return self._error(404, "not found")
+
     def do_POST(self):
         if not self._host_ok():
             return self._error(403, "forbidden host")
@@ -705,6 +757,8 @@ class Handler(BaseHTTPRequestHandler):
         r = [unquote(p) for p in urlparse(self.path).path.strip("/").split("/") if p][1:]
         num = lambda k: float(body.get(k) or 0)  # noqa: E731
         try:
+            if r[:1] == ["dev"]:
+                return self._dev_post(r[1:], body)
             if r == ["companies"]:
                 return self._json(start(str(body.get("ticker", "")), num("confirm_usd")))
             if len(r) >= 3 and r[0] == "companies":
@@ -758,6 +812,8 @@ def serve(port: int = 8787, open_browser: bool = True) -> None:
         print("The web app isn't built yet. Build it with:\n  npm --prefix web install && npm --prefix web run build")
     store.use_filing_cache()  # the app's own filings; the CLI's data/raw|parsed|index stay as the evals left them
     recover_interrupted()
+    if devtools.ENABLED:
+        devtools.job_view()  # settle an eval run that finished (or stopped) while the server was down
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     except OSError:
@@ -766,7 +822,9 @@ def serve(port: int = 8787, open_browser: bool = True) -> None:
     print(f"filing-room on {url}  (local only; Ctrl-C to stop)")
     print(f"app data: {store.root()} (filings cached in {store.filings_root()})")
     print(f"paid actions: questions ${ASK_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY), "
-          f"screenings ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)")
+          f"screenings ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)"
+          + (f", evals ${devtools.EVAL_MAX_USD_PER_DAY:.2f}/day (EVAL_MAX_USD_PER_DAY)" if devtools.ENABLED
+             else "; developer tools off (FILINGROOM_DEV_TOOLS)"))
     if open_browser:
         webbrowser.open(url)
     try:

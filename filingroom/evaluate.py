@@ -9,6 +9,7 @@ Citation support is judged for every answered item, using only quotes that verif
 
 import json
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -116,9 +117,18 @@ def metrics(rows: list[dict]) -> dict:
 # ---------------------------------------------------------------- driver
 
 def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int = 0, judge_model: str = JUDGE_MODEL,
-        label: str = "", note: str = "", workers: int = 6, use_judge: bool = True) -> dict:
+        label: str = "", note: str = "", workers: int = 6, use_judge: bool = True,
+        only: set[str] | None = None, progress=None, out_dir=None, changelog: bool = True) -> dict:
+    """Optional hooks (used by the app's evaluation area; the CLI passes none of them):
+    only       golden ids to run instead of the whole set (a spot check)
+    progress   called with (items done, items total) as each item is graded
+    out_dir    write the results files (and the rows backup) here instead of results/ (and runs/)
+    changelog  False to skip the CHANGELOG-evals.md line
+    """
     t0 = time.time()
     items = golden.load(tickers)
+    if only is not None:
+        items = [i for i in items if i["id"] in only]
     qs = checklist.by_id()
     ixs = {t: Index(t) for t in tickers}
     answer_meter, judge_meter = llm.CostMeter(), llm.CostMeter()
@@ -144,15 +154,21 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
                 correct = j["correct"] == "yes"
         mark = {True: "✓", False: "✗", None: "·"}[correct]
         print(f"  {mark} {item['id']:<28} {ans['status']:<11} {(ans['answer'] or ans['error'] or '')[:90]}")
+        if progress:
+            with progress_lock:
+                done[0] += 1
+                progress(done[0], len(items))
         return {**ans, "id": item["id"], "grade": grade, "expected": item["expected"],
                 "golden_verified": item.get("verified"), "correct": correct, "supported": supported,
                 "judge_reason": reason, "value_in_context": value_in_context(item, ans, ixs[item["ticker"]])}
 
+    done, progress_lock = [0], threading.Lock()
     with ThreadPoolExecutor(max_workers=workers) as pool:
         rows = list(pool.map(work, items))
     # Save the paid-for answers before anything else can fail.
-    config.RUNS.mkdir(exist_ok=True)
-    (config.RUNS / "last_eval_rows.json").write_text(json.dumps(rows))
+    rows_dir = out_dir or config.RUNS
+    rows_dir.mkdir(parents=True, exist_ok=True)
+    (rows_dir / "last_eval_rows.json").write_text(json.dumps(rows))
     m = metrics(rows)
     m["cost_usd"] = {"answer": round(answer_meter.cost(), 4), "judge": round(judge_meter.cost(), 4)}
     m["cost_per_company_usd"] = round(answer_meter.cost() / len(tickers), 4)
@@ -163,13 +179,16 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
               "metrics": m, "usage": {"answer": answer_meter.summary(), "judge": judge_meter.summary()},
               "rows": rows}
     prev = latest_result(tickers)
-    config.RESULTS.mkdir(exist_ok=True)
+    res_dir = out_dir or config.RESULTS
+    res_dir.mkdir(parents=True, exist_ok=True)
     name = f"{stamp}{'_' + label if label else ''}"
-    (config.RESULTS / f"{name}.json").write_text(json.dumps(result, indent=1))
-    (config.RESULTS / f"{name}.md").write_text(report_md(result, prev))
-    append_changelog(result)
+    (res_dir / f"{name}.json").write_text(json.dumps(result, indent=1))
+    (res_dir / f"{name}.md").write_text(report_md(result, prev))
+    if changelog:
+        append_changelog(result)
     print(report_md(result, prev, brief=True))
-    print(f"wrote results/{name}.json and .md")
+    print(f"wrote {res_dir.relative_to(config.ROOT) if res_dir.is_relative_to(config.ROOT) else res_dir}/{name}.json and .md")
+    result["name"] = name
     return result
 
 
@@ -243,10 +262,11 @@ def append_changelog(r: dict) -> None:
                 f"{_fmt(m['retrieval_recall'])} | {m['cost_usd']['answer']}/{m['cost_usd']['judge']} |\n")
 
 
-def retrieval_check(tickers: list[str], k: int, expand: int = 0) -> None:
-    """No API calls: for numeric golden items, is the expected number anywhere in the top-k chunks?"""
+def retrieval_check(tickers: list[str], k: int, expand: int = 0) -> dict:
+    """No API calls: for numeric golden items, is the expected number anywhere in the top-k chunks?
+    Prints as before and also returns {k, expand, hits, total, recall, items: [{id, ok, top}]}."""
     qs = checklist.by_id()
-    hits, total = 0, 0
+    hits, total, out = 0, 0, []
     for t in tickers:
         ix = Index(t)
         P = checklist.periods(t)
@@ -257,5 +277,7 @@ def retrieval_check(tickers: list[str], k: int, expand: int = 0) -> None:
                 continue
             total += 1
             hits += ok
+            out.append({"id": item["id"], "ok": bool(ok), "top": fake["retrieved"][0]})
             print(f"  {'✓' if ok else '✗'} {item['id']:<28} top: {fake['retrieved'][0]}")
     print(f"retrieval recall@{k} (expand={expand}): {hits}/{total} = {_pct(hits, total)}%")
+    return {"k": k, "expand": expand, "hits": hits, "total": total, "recall": _pct(hits, total), "items": out}
