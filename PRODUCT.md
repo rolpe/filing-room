@@ -37,12 +37,13 @@ Runs on the user's own machine at `http://127.0.0.1:8787`. Coverage starts empty
 
 ## Capabilities and Constraints
 
-Screens: Coverage (home) with find-or-add; company workspace with Overview, Findings, Screening memo, Q&A and Filings tabs; Usage.
+Screens: Coverage (home) with find-or-add; company workspace with Overview, Findings, Screening memo, Q&A and Filings tabs; Usage; and, under a Developer group in the sidebar, Evaluation (Runs, Golden set, Run an eval).
 
 - Findings have three statuses: Verified, To review, Not disclosed. Users can add notes, flag a finding for review, and mark a To review finding as reviewed after checking it.
 - Exports: findings as CSV with source URLs; memo as Markdown; memo print stylesheet.
 - Paid actions: screening a company (about $1.25; $2.50 hard stop per company; $3/day cap) and asking a question (up to $0.05; $1/day cap). The cost is shown before the action and confirmed in the request; the actual cost is shown after. One screening runs at a time; an interrupted one resumes without paying again for answers already produced.
 - Local only: loopback bind, Host-header check, custom header on POSTs.
+- Evaluation area (developer tools, for demos; `FILINGROOM_DEV_TOOLS`, default on): shows how the answering engine is measured: recorded eval runs against the pass bar set before building (accuracy at least 85%, citation support at least 90%, unsupported claims at most 10%), the held-out company's single run, each graded item with its expected answer, the judge's verdict and the filing passage, and the golden set. It can start a full run or a spot check (cost shown and confirmed, $3/day cap) and a free retrieval check. This is the only place eval vocabulary (golden set, held-out company, judge) appears, each defined in a line where it first shows. It must read well on a shared screen.
 
 ## Brand Commitments
 

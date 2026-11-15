@@ -217,7 +217,7 @@ def coverage_view() -> dict:
               "processing": sum(r["state"] == "processing" for r in rows),
               "failed": sum(r["state"] == "failed" for r in rows),
               "review": sum(bool(r["findings"] and r["findings"]["review"]) for r in rows)}
-    return {"companies": rows, "counts": counts, "busy": _busy_ticker()}
+    return {"companies": rows, "counts": counts, "busy": _busy_ticker(), "dev_tools": devtools.ENABLED}
 
 
 def company_view(t: str) -> dict:

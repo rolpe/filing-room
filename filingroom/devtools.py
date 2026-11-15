@@ -489,8 +489,11 @@ def config_view() -> dict:
     per = per_item_estimate([r for _, r in _runs("results")])
     items = [{"id": i["id"], "ticker": i["ticker"], "qid": i["qid"], "label": _labels().get(i["qid"], i["qid"]),
               "grade": i["grade"]} for i in golden.load(tune_tickers())]
+    counts: dict[str, int] = {}
+    for g in _golden_by_id().values():
+        counts[g["ticker"]] = counts.get(g["ticker"], 0) + 1
     return {"companies": [{"ticker": t, "name": c.get("name", t), "split": c.get("split"),
-                           "items": sum(1 for i in items if i["ticker"] == t)}
+                           "items": counts.get(t, 0)}
                           for t, c in cos.items() if c.get("split") in ("tune", "holdout")],
             "items": items, "per_item_usd": per, "max_spot_items": MAX_SPOT_ITEMS, "spend": spend_view(),
             "model": answer.DEFAULT_MODEL, "effort": answer.DEFAULT_EFFORT, "k": answer.DEFAULT_K,

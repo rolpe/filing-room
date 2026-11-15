@@ -34,16 +34,19 @@ export function UsagePage() {
                 note={`Each screening stops at ${money(u.caps.screening.per_run_limit_usd)}. Change the daily cap with RUN_MAX_USD_PER_DAY in .env.`} />
               <Meter label="Questions" used={u.caps.questions.today_usd} cap={u.caps.questions.cap_usd}
                 note={`Up to ${money(u.caps.questions.estimate_usd)} per question. Change the daily cap with UI_MAX_USD_PER_DAY in .env.`} />
+              {u.evals && <Meter label="Evaluation runs" used={u.evals.today_usd} cap={u.evals.cap_usd}
+                note={`Each run stops at ${money(u.evals.run_limit_usd)}. Change the daily cap with EVAL_MAX_USD_PER_DAY in .env.`} />}
             </dl>
 
             <div className="sec-head"><h2>By day</h2></div>
             {u.days.length === 0 ? <p className="muted">Nothing spent yet.</p> : (
               <table className="plain">
-                <thead><tr><th>Date</th><th className="num">Screenings</th><th className="num">Questions</th><th className="num">Total</th></tr></thead>
+                <thead><tr><th>Date</th><th className="num">Screenings</th><th className="num">Questions</th>{u.evals && <th className="num">Evaluation</th>}<th className="num">Total</th></tr></thead>
                 <tbody>
                   {u.days.map((d) => (
                     <tr key={d.date}><td>{date(d.date)}</td><td className="num">{money(d.screening_usd)}</td>
-                      <td className="num">{money(d.questions_usd)}</td><td className="num"><b>{money(d.screening_usd + d.questions_usd)}</b></td></tr>
+                      <td className="num">{money(d.questions_usd)}</td>{u.evals && <td className="num">{money(d.evals_usd)}</td>}
+                      <td className="num"><b>{money(d.screening_usd + d.questions_usd + d.evals_usd)}</b></td></tr>
                   ))}
                 </tbody>
               </table>

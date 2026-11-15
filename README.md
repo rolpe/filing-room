@@ -8,6 +8,7 @@ A first-look screening tool for US public companies, for take-private deal teams
 - **A screening memo** whose factual sentences cite findings, with sentences an automatic claim check can't support marked. Exports to Markdown and prints cleanly.
 - **Q&A** per company: follow-up questions answered only from the filings, with the same citations.
 - **Notes, flags and review marks** on findings, and a CSV export of everything with source URLs.
+- **Evaluation** (developer tools, for demos): every recorded eval run against the pass bar, each graded item with its expected answer and the filing passage, the golden set, and a form to start a run or a free retrieval check. One switch hides it: `FILINGROOM_DEV_TOOLS=0`.
 
 Sources: the last two 10-Ks, last four 10-Qs, latest proxy statement and latest earnings release, from SEC EDGAR. Nothing else.
 
@@ -46,7 +47,7 @@ SEC XBRL company facts ──> five-year financials, and a cross-check of numeri
 
 ## How accuracy was measured
 
-The answering engine was built as a measured experiment before it became a tool: a written hypothesis, a golden answer set, two companies to tune on and one held out until the system was frozen. The eval harness (`./fr eval`, `golden/`, `results/`, `CHANGELOG-evals.md`) is kept as regression tooling: any change to what the model is sent is re-measured with it.
+The answering engine was built as a measured experiment before it became a tool: a written hypothesis, a golden answer set, two companies to tune on and one held out until the system was frozen. The eval harness (`./fr eval`, `golden/`, `results/`, `CHANGELOG-evals.md`) is kept as regression tooling: any change to what the model is sent is re-measured with it. The app's Evaluation area shows the same results and can start the same runs (a full run there writes exactly what `./fr eval` writes; spot checks are kept apart). Eval runs are capped at $3/day (`EVAL_MAX_USD_PER_DAY`).
 
 **Hypothesis:** an agent grounded in a company's public filings can answer a standard diligence checklist with cited, verifiable answers accurately enough to replace the first pass of diligence prep.
 **Pass bar (set before building):** on a held-out company, ≥85% of answers correct, ≥90% of citations support their answer, and the agent says "not in the filings" when that's the truth.

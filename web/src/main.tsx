@@ -11,6 +11,11 @@ import { MemoPage } from "./pages/Memo";
 import { QAPage } from "./pages/QA";
 import { FilingsPage } from "./pages/Filings";
 import { UsagePage } from "./pages/Usage";
+import { EvalsLayout } from "./pages/evals/Layout";
+import { EvalRunsPage } from "./pages/evals/Runs";
+import { EvalRunPage } from "./pages/evals/RunDetail";
+import { GoldenPage } from "./pages/evals/Golden";
+import { RunEvalPage } from "./pages/evals/RunEval";
 import { ErrorState } from "./components/States";
 import "./styles/tokens.css";
 import "./styles/app.css";
@@ -39,6 +44,16 @@ const router = createBrowserRouter([
         ],
       },
       { path: "usage", element: <UsagePage /> },
+      {
+        path: "evals",
+        element: <EvalsLayout />,
+        children: [
+          { index: true, element: <EvalRunsPage /> },
+          { path: "runs/:kind/:name", element: <EvalRunPage /> },
+          { path: "golden", element: <GoldenPage /> },
+          { path: "run", element: <RunEvalPage /> },
+        ],
+      },
       { path: "*", element: <ErrorState title="Page not found" error="There's nothing at this address." /> },
     ],
   },

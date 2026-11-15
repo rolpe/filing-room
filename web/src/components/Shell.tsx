@@ -8,6 +8,7 @@ import { AddCompanyProvider } from "./AddCompany";
 
 export function Shell() {
   const cov = useQuery({ queryKey: ["coverage"], queryFn: api.coverage });
+  const devTools = !!cov.data?.dev_tools;  // the server's FILINGROOM_DEV_TOOLS switch
   const [recent, setRecent] = useState(readRecent);
   useEffect(() => {
     const on = () => setRecent(readRecent());
@@ -36,6 +37,12 @@ export function Shell() {
                   <b>{t}</b><span>{names.get(t)}</span>
                 </NavLink>
               ))}
+            </nav>
+          </>}
+          {devTools && <>
+            <h2>Developer</h2>
+            <nav aria-label="Developer tools">
+              <NavLink className="item" to="/evals"><Icon name="gauge" /><span>Evaluation</span></NavLink>
             </nav>
           </>}
           <div className="foot">

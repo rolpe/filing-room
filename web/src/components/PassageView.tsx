@@ -52,22 +52,26 @@ export function Blocks({ blocks, active, dim }: { blocks: Block[]; active: numbe
   );
 }
 
-function Neighbor({ ticker, chunk, source }: { ticker: string; chunk: string; source: string }) {
-  const q = useQuery({ queryKey: ["passage", ticker, chunk, source], queryFn: () => api.passage(ticker, chunk, source) });
+/** Where passages come from: the app's filings (default) or, in the evaluation area, the eval corpus. */
+export type PassageLoader = { key: unknown[]; load: (chunk: string) => Promise<Passage> };
+
+function Neighbor({ loader, chunk }: { loader: PassageLoader; chunk: string }) {
+  const q = useQuery({ queryKey: [...loader.key, chunk], queryFn: () => loader.load(chunk) });
   if (q.isLoading) return <div style={{ display: "grid", gap: 8, marginBottom: 14 }}><Skeleton /><Skeleton w="80%" /></div>;
   if (!q.data) return null;
   return <><Blocks blocks={q.data.blocks} active={-1} dim /><hr className="sep" /></>;
 }
 
-export function PassageView({ ticker, source, citations, active, onActive, scrollRoot }: {
+export function PassageView({ ticker, source, citations, active, onActive, scrollRoot, loader: custom }: {
   ticker: string; source: string; citations: Citation[]; active: number; onActive: (n: number) => void;
-  scrollRoot?: React.RefObject<HTMLElement | null>;
+  scrollRoot?: React.RefObject<HTMLElement | null>; loader?: PassageLoader;
 }) {
+  const loader: PassageLoader = custom ?? { key: ["passage", ticker, source], load: (ch) => api.passage(ticker, ch, source) };
   const c = citations.find((x) => x.n === active) ?? citations[0];
   const idx = c ? citations.indexOf(c) : -1;
   const chunk = c?.chunk_id ?? null;
   const q = useQuery({
-    queryKey: ["passage", ticker, chunk, source], queryFn: () => api.passage(ticker, chunk!, source),
+    queryKey: [...loader.key, chunk], queryFn: () => loader.load(chunk!),
     enabled: !!chunk, retry: false,
   });
   const [before, setBefore] = useState<string[]>([]);
@@ -130,10 +134,10 @@ export function PassageView({ ticker, source, citations, active, onActive, scrol
             <div className="more"><button className="btn sm ghost" onClick={() => setBefore((b) => [prevOf(p, b), ...b].filter(Boolean) as string[])}>
               <Icon name="up" />Earlier text</button></div>
           )}
-          {before.map((id) => <Neighbor key={id} ticker={ticker} chunk={id} source={source} />)}
+          {before.map((id) => <Neighbor key={id} loader={loader} chunk={id} />)}
           {p.subheading && !startsWith(p, p.subheading) && <h3>{p.subheading}</h3>}
           <Blocks blocks={p.blocks} active={c.n} dim={p.found.length > 0} />
-          {after.map((id) => <Neighbor key={id} ticker={ticker} chunk={id} source={source} />)}
+          {after.map((id) => <Neighbor key={id} loader={loader} chunk={id} />)}
           {p.next_chunk && after.length < MAX_EXTRA && (
             <div className="more"><button className="btn sm ghost" onClick={() => setAfter((a) => [...a, nextOf(p, a)].filter(Boolean) as string[])}>
               <Icon name="dn" />Later text</button></div>

@@ -94,6 +94,8 @@ export interface Coverage {
   companies: CoverageRow[];
   counts: { all: number; ready: number; processing: number; failed: number; review: number };
   busy: string | null;
+  /** Developer tools (the evaluation area) are switched on for this server. */
+  dev_tools?: boolean;
 }
 
 export interface SecResult {
@@ -299,8 +301,9 @@ export interface Filing {
 }
 
 export interface Usage {
-  days: { date: string; questions_usd: number; screening_usd: number }[];
+  days: { date: string; questions_usd: number; screening_usd: number; evals_usd: number }[];
   total_usd: number;
+  evals: { today_usd: number; cap_usd: number; remaining_usd: number; run_limit_usd: number } | null;
   caps: {
     questions: { today_usd: number; cap_usd: number; estimate_usd: number };
     screening: { today_usd: number; cap_usd: number; per_run_limit_usd: number };

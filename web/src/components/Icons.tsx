@@ -22,6 +22,7 @@ const SYMBOLS: Record<string, string> = {
   play: '<path d="M8 5.5v13l10-6.5z"/>',
   trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12.5h8L17 7"/>',
   print: '<path d="M7 9V4.5h10V9"/><rect x="4.5" y="9" width="15" height="7.5" rx="1.5"/><path d="M7.5 14h9v5.5h-9z"/>',
+  gauge: '<path d="M4.5 16.5a7.5 7.5 0 1 1 15 0"/><path d="m12 16.5 3.5-4.5"/><path d="M4.5 19.5h15"/>',
   undo: '<path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/>',
 };
 
