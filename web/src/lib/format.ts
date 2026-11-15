@@ -74,3 +74,8 @@ export function money(v: number): string {
 }
 
 export const statusLabel = { verified: "Verified", review: "To review", not_disclosed: "Not disclosed" } as const;
+
+/** Display a model-written period ("as of 2026-06-30") with readable dates ("as of Jun 30, 2026"). */
+export function periodText(s: string | null | undefined): string {
+  return (s || "").replace(/\b(\d{4}-\d{2}-\d{2})\b/g, (m) => date(m) || m);
+}

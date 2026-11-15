@@ -94,7 +94,8 @@ export function PassageView({ ticker, source, citations, active, onActive, scrol
       <div className="doc-head">
         <div className="t">
           <b>{p?.form_label ?? (c.form ? `${c.form} ${c.period ?? ""}` : "Filing")}</b>
-          <span>{[p?.filing_date && `Filed ${date(p.filing_date)}`, p?.heading || c.section].filter(Boolean).join(" · ")}</span>
+          <span>{[p?.filing_date ? `Filed ${date(p.filing_date)}` : c.filing_date ? `Filed ${date(c.filing_date)}` : "",
+            p ? (p.heading || p.subheading) : realSection(c.section)].filter(Boolean).join(" · ")}</span>
         </div>
         <span className="sp" />
         {citations.length > 1 && <span className="pos">Passage {idx + 1} of {citations.length}</span>}
@@ -152,4 +153,9 @@ function prevOf(p: Passage, before: string[]) {
 }
 function nextOf(p: Passage, after: string[]) {
   return after.length ? step(after[after.length - 1], 1) : p.next_chunk;
+}
+
+/** Section names from the index are SEC item headings, or a slug ("proxy", "press_release") for whole documents. */
+function realSection(s: string) {
+  return /^[a-z_]+$/.test(s) ? "" : s;
 }

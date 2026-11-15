@@ -56,7 +56,7 @@
 .note-box .row { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
 .missing-quotes { margin: 14px 0 0; }
 .missing-quotes h3 { margin: 0 0 6px; font-size: var(--fs-sm); font-weight: 600; color: var(--ink-2); }
-.missing-quotes blockquote { margin: 0 0 6px; padding: 6px 10px; border-left: 2px solid var(--warn); background: var(--panel); font: 14px/1.5 var(--serif); color: var(--filing-ink); }
+.missing-quotes blockquote { margin: 0 0 6px; padding: 8px 12px; border-radius: 6px; background: var(--warn-wash); font: 14px/1.5 var(--serif); color: var(--filing-ink); }
 .missing-quotes blockquote b { font: 600 11px/1 var(--sans); color: var(--warn); margin-right: 6px; }
 
 .doc { margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
@@ -93,3 +93,7 @@
   .find .src, .find th.src { display: none; }
   .detail { width: calc(100vw - 52px); }
 }
+.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; overflow: hidden; }
+.clamp > p { margin-top: 10px; }
+.clamp.open { display: block; overflow: visible; }
+.more-btn { margin: 2px 0 0 -8px; }

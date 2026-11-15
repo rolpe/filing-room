@@ -24,7 +24,7 @@ export function useCompany(t: string) {
 function fig(f: Figure) {
   const v = f.kind === "usd" ? usd(f.value) : f.kind === "pct" ? pct(f.value) : count(f.value);
   const sub = f.sub === null || f.sub === undefined ? "" : f.sub_kind === "pct_change" ? pctChange(f.sub) : pct(f.sub);
-  const val = f.qid ? <Link className="link" to={`findings?f=${f.qid}`} title="Open the finding">{v}</Link> : v;
+  const val = f.qid ? <Link className="fig-link" to={`findings?f=${f.qid}`} title="Open the finding">{v}</Link> : v;
   return <><dt>{f.label}</dt><dd>{val}{sub && <small>{sub}</small>}</dd></>;
 }
 

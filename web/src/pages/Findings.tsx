@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api, type FindingDetail, type FindingRow, type Status } from "../lib/api";
-import { date, findingValue, usd } from "../lib/format";
+import { date, findingValue, periodText, usd } from "../lib/format";
 import { typing, useMedia, useToast } from "../lib/hooks";
 import { Icon } from "../components/Icons";
 import { PassageView } from "../components/PassageView";
@@ -202,10 +202,12 @@ function Detail({ d, ticker, active, setActive, scroller }: {
       <h2>{d.label}</h2>
       <p className="q">{d.question}</p>
       {d.status === "not_disclosed" ? (
-        <p className="lead">{d.answer || "The filings reviewed don't disclose this."}</p>
+        <Clamp key={d.qid}><p className="lead">{d.answer || "The filings reviewed don't disclose this."}</p></Clamp>
       ) : (
         <>
-          {lead && <p className="lead">{lead.text}<Refs cites={lead.cites} active={active} onPick={setActive} missing={missing} /></p>}
+          {lead && (d.presented
+            ? <p className="lead">{lead.text}<Refs cites={lead.cites} active={active} onPick={setActive} missing={missing} /></p>
+            : <Clamp key={d.qid}><p className="lead">{lead.text}<Refs cites={lead.cites} active={active} onPick={setActive} missing={missing} /></p></Clamp>)}
           {rest.length > 0 && (
             <ul className="terms">
               {rest.map((p, i) => <li key={i}>{p.text}<Refs cites={p.cites} active={active} onPick={setActive} missing={missing} /></li>)}
@@ -223,7 +225,7 @@ function Detail({ d, ticker, active, setActive, scroller }: {
               ? <StatusBadge status={d.status} text={`${d.facts.quotes_found} quotes found in filing`} />
               : <StatusBadge status={d.status} />}
         </dd></div>
-        {d.facts.period && <div><dt>Period</dt><dd title={d.facts.period_full}>{d.facts.period}</dd></div>}
+        {d.facts.period && <div><dt>Period</dt><dd title={periodText(d.facts.period_full)}>{periodText(d.facts.period)}</dd></div>}
         {d.facts.confidence && d.status !== "not_disclosed" && <div><dt>Confidence</dt><dd style={{ textTransform: "capitalize" }}>{d.facts.confidence}</dd></div>}
         {sec && <div><dt>SEC data</dt><dd>{sec.match
           ? <span className="status ok"><Icon name="check" />Matches XBRL{sec.period ? `, ${sec.period}` : ""}</span>
@@ -281,6 +283,29 @@ function Detail({ d, ticker, active, setActive, scroller }: {
         <PassageView ticker={ticker} source={`finding:${d.qid}`} citations={d.citations} active={active} onActive={setActive} scrollRoot={scroller} />
       )}
       {toast && <div className="toast" role="status">{toast}</div>}
+    </>
+  );
+}
+
+/** Long answer prose (no presentation pass) is clamped to about six lines so the filing passage stays in view. */
+function Clamp({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [over, setOver] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOver(el.scrollHeight > el.clientHeight + 2);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <>
+      <div ref={ref} className={open ? "clamp open" : "clamp"}>{children}</div>
+      {(over || open) && <button type="button" className="btn ghost sm more-btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Icon name={open ? "up" : "dn"} />{open ? "Show less" : "Show more"}</button>}
     </>
   );
 }

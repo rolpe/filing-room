@@ -15,7 +15,7 @@
 .figures dt { font-size: var(--fs-sm); color: var(--ink-3); }
 .figures dd { margin: 1px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
 .figures dd small { font-size: var(--fs-sm); font-weight: 400; color: var(--ink-3); margin-left: 5px; }
-.figures a.fig:hover dd { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
+.figures .fig-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); padding: 0 var(--gutter); flex: none; overflow-x: auto; scrollbar-width: none; }
 .tabs a { position: relative; height: 38px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-weight: 550; white-space: nowrap; }
 .tabs a:hover { color: var(--ink); }
