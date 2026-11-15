@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BILL Holdings · filing-room (mock-up)</title>
+<style>
+/* Approved mock-up for the app (visual contract). Static; not wired to the API. */
+:root {
+  --ink: #14161a;
+  --ink-2: #3c424c;
+  --ink-3: #5d6470;
+  --ground: #ffffff;
+  --panel: #f6f6f3;
+  --panel-2: #eeeeea;
+  --line: #e4e4df;
+  --line-strong: #cdcdc7;
+  --rail: #15171b;
+  --rail-2: #24282f;
+  --rail-line: #2c3038;
+  --rail-text: #c8ccd3;
+  --rail-muted: #8d939d;
+  --mark: #ffe680;
+  --mark-strong: #ffcf33;
+  --ok: #17694a;
+  --ok-wash: #e5f2eb;
+  --warn: #8a4706;
+  --warn-wash: #fbeedb;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Georgia, serif;
+  --rail-w: 208px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font: 13px/1.45 var(--sans);
+  color: var(--ink);
+  background: var(--ground);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  overflow: hidden;
+}
+::selection { background: var(--mark); color: var(--ink); }
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+.rail :focus-visible { outline-color: #fff; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.num { text-align: right; white-space: nowrap; }
+.muted { color: var(--ink-3); }
+.scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* ---------- rail ---------- */
+.rail { background: var(--rail); color: var(--rail-text); display: flex; flex-direction: column; height: 100vh; padding: 14px 10px 12px; min-width: 0; }
+.wordmark { display: flex; align-items: center; gap: 9px; padding: 4px 8px 16px; color: #fff; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.wordmark svg { width: 18px; height: 18px; }
+.rail nav { display: grid; gap: 1px; }
+.rail a.item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; color: var(--rail-text); white-space: nowrap; }
+.rail a.item:hover { background: var(--rail-2); color: #fff; }
+.rail a.item[aria-current] { background: var(--rail-2); color: #fff; font-weight: 600; }
+.rail h2 { margin: 22px 8px 6px; font-size: 12px; font-weight: 500; color: var(--rail-muted); }
+.rail .co { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; height: 30px; padding: 0 8px; border-radius: 6px; }
+.rail .co b { color: #fff; font-weight: 600; font-size: 12px; letter-spacing: 0.02em; }
+.rail .co span { color: var(--rail-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail .co:hover, .rail .co[aria-current] { background: var(--rail-2); }
+.rail .co[aria-current] span { color: var(--rail-text); }
+.rail .foot { margin-top: auto; border-top: 1px solid var(--rail-line); padding-top: 8px; display: grid; gap: 1px; }
+.rail .foot .item span.r { margin-left: auto; color: var(--rail-muted); }
+
+/* ---------- main frame ---------- */
+main { display: flex; flex-direction: column; height: 100vh; min-width: 0; }
+.bar { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 24px; border-bottom: 1px solid var(--line); flex: none; }
+.search { position: relative; flex: 1; max-width: 520px; }
+.search .icon { position: absolute; left: 10px; top: 8px; color: var(--ink-3); }
+.search input { width: 100%; height: 32px; padding: 0 44px 0 34px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.search input::placeholder { color: var(--ink-3); }
+.search input:hover { border-color: var(--line-strong); }
+.search input:focus { outline: 2px solid var(--ink); outline-offset: 1px; background: var(--ground); }
+.search kbd { position: absolute; right: 8px; top: 7px; font: 11px/1 var(--sans); color: var(--ink-3); border: 1px solid var(--line-strong); border-radius: 4px; padding: 3px 5px; background: var(--ground); }
+.bar .sp { flex: 1; }
+
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--ground); font-weight: 550; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--panel); border-color: #b9b9b2; }
+.btn:active { background: var(--panel-2); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.primary:hover { background: #2a2e36; border-color: #2a2e36; }
+.btn.ghost { border-color: transparent; color: var(--ink-2); padding: 0 8px; }
+.btn.ghost:hover { background: var(--panel-2); border-color: transparent; }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.btn.sq { width: 28px; padding: 0; justify-content: center; }
+
+.seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--panel-2); border-radius: 8px; }
+.seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font-weight: 550; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ground); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 22, 26, .12); }
+.seg button i { font-style: normal; color: var(--ink-3); margin-left: 5px; font-weight: 400; }
+
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-weight: 550; }
+.status .icon { width: 14px; height: 14px; }
+.status.ok { color: var(--ok); }
+.status.warn { color: var(--warn); }
+.status.none { color: var(--ink-3); font-weight: 400; }
+
+table { border-collapse: collapse; width: 100%; }
+th { font-size: 12px; font-weight: 500; color: var(--ink-3); text-align: left; white-space: nowrap; }
+
+/* ---------- coverage ---------- */
+.page-head { display: flex; align-items: center; gap: 14px; padding: 22px 24px 14px; flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; }
+.page-head .count { color: var(--ink-3); }
+.cov-wrap { flex: 1; min-height: 0; padding: 0 24px 24px; }
+.cov th { position: sticky; top: 0; background: var(--ground); padding: 8px 10px; border-bottom: 1px solid var(--line-strong); z-index: 1; }
+.cov td { padding: 0 10px; height: 52px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cov th:first-child, .cov td:first-child { padding-left: 8px; }
+.cov tbody tr { cursor: pointer; }
+.cov tbody tr:hover td { background: var(--panel); }
+.cov .name { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: baseline; min-width: 176px; }
+.cov .name b { font-weight: 650; letter-spacing: 0.02em; }
+.cov .name span { overflow: hidden; text-overflow: ellipsis; }
+.cov .sub { display: block; font-size: 12px; color: var(--ink-3); }
+.cov .neg { color: var(--ink); }
+.cov .pending td.wait { color: var(--ink-3); }
+.prog { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.prog .track { width: 96px; height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
+.prog .track i { display: block; height: 100%; background: var(--ink); border-radius: 2px; }
+
+/* ---------- company ---------- */
+.co-head { padding: 16px 24px 0; flex: none; }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12px; }
+.crumb a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.crumb .icon { width: 12px; height: 12px; }
+.title-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+.title-row h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; }
+.tick { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; padding: 2px 6px; border: 1px solid var(--line-strong); border-radius: 5px; }
+.title-row .sp { flex: 1; }
+.meta { margin: 4px 0 0; color: var(--ink-3); }
+.figures { display: flex; margin: 14px 0 0; padding: 10px 0; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.figures div { padding: 0 20px; border-left: 1px solid var(--line); white-space: nowrap; }
+.figures div:first-child { padding-left: 0; border-left: 0; }
+.figures dt { font-size: 12px; color: var(--ink-3); }
+.figures dd { margin: 1px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.figures dd small { font-size: 12px; font-weight: 400; color: var(--ink-3); margin-left: 5px; }
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); padding: 0 24px; flex: none; }
+.tabs a { position: relative; height: 38px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-weight: 550; white-space: nowrap; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current] { color: var(--ink); }
+.tabs a[aria-current]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+.tabs a i { font-style: normal; font-weight: 400; color: var(--ink-3); }
+
+.work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+.list { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.tools { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 24px; flex: none; }
+.filter { position: relative; flex: 1; min-width: 90px; max-width: 220px; }
+.filter .icon { position: absolute; left: 8px; top: 7px; width: 14px; height: 14px; color: var(--ink-3); }
+.filter input { width: 100%; height: 28px; padding: 0 8px 0 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--ground); font-size: 12px; }
+.filter input::placeholder { color: var(--ink-3); }
+.find th { position: sticky; top: 0; z-index: 1; background: var(--ground); padding: 6px 10px; border-bottom: 1px solid var(--line-strong); }
+.find th:first-child, .find td:first-child { padding-left: 24px; }
+.find td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.find tr.group td { padding-top: 16px; padding-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--ink-2); background: var(--ground); border-bottom: 1px solid var(--line-strong); }
+.find tr.group td i { font-style: normal; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+.find tbody tr:not(.group) { cursor: pointer; }
+.find tbody tr:not(.group):hover td { background: var(--panel); }
+.find tr[aria-selected="true"] td { background: var(--panel-2); }
+.find tr[aria-selected="true"]:hover td { background: var(--panel-2); }
+.find tr[aria-selected="true"] .label { font-weight: 650; }
+.find .label { font-weight: 550; }
+.find .gist { display: block; color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.find td.what { max-width: 0; width: 100%; }
+.find td.val { font-weight: 600; }
+.find td.src { color: var(--ink-3); white-space: nowrap; font-size: 12px; padding-top: 8px; }
+.find td.st { padding-top: 8px; padding-right: 16px; }
+
+/* detail + source */
+.detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ground); }
+.d-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 22px; border-bottom: 1px solid var(--line); flex: none; }
+.d-head .where { color: var(--ink-3); font-size: 12px; }
+.d-head .sp { flex: 1; }
+.d-body { flex: 1; min-height: 0; padding: 18px 22px 28px; }
+.d-body h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.lead { margin: 8px 0 0; font-size: 14px; line-height: 1.5; max-width: 68ch; }
+.terms { margin: 10px 0 0; padding: 0; list-style: none; max-width: 70ch; }
+.terms li { position: relative; padding: 3px 0 3px 14px; color: var(--ink-2); }
+.terms li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-3); }
+.ref { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; margin-left: 3px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--ground); font-size: 11px; font-weight: 600; color: var(--ink-2); vertical-align: 1px; cursor: pointer; }
+.ref:hover { border-color: var(--ink); color: var(--ink); }
+.ref[aria-current] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 16px 0 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.facts dt { font-size: 12px; color: var(--ink-3); }
+.facts dd { margin: 1px 0 0; font-weight: 550; }
+.acts { display: flex; gap: 4px; margin: 10px 0 0 -8px; flex-wrap: wrap; }
+
+.doc { margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.doc-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.doc-head .t { min-width: 0; }
+.doc-head b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-head .t span { display: block; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-head .sp { flex: 1; }
+.doc-head .pos { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.filing { padding: 18px 22px 22px; font: 15px/1.62 var(--serif); color: #23262c; font-variant-numeric: normal; }
+.filing h3 { margin: 0 0 8px; font: 600 15px/1.4 var(--serif); }
+.filing p { margin: 0 0 12px; max-width: 72ch; }
+.filing .ctx { color: #5b616b; }
+.filing mark { background: var(--mark); color: inherit; padding: 1px 0; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.filing mark.on { background: var(--mark-strong); }
+.filing mark sup { font: 600 10px/1 var(--sans); margin-right: 3px; color: #4a3a00; vertical-align: 5px; }
+
+.rail .mock-note { margin: auto 8px 12px; font-size: 12px; line-height: 1.4; color: var(--rail-muted); }
+.rail .mock-note + .foot { margin-top: 0; }
+
+/* ---------- narrower windows ---------- */
+@media (max-width: 1240px) {
+  :root { --rail-w: 52px; }
+  .rail { padding: 14px 8px 12px; align-items: stretch; }
+  .wordmark span, .rail a.item span, .rail h2, .rail .co span, .rail .foot .r, .rail .mock-note { display: none; }
+  .rail .foot { margin-top: auto !important; }
+  .wordmark { justify-content: center; padding: 4px 0 16px; }
+  .rail a.item { justify-content: center; padding: 0; }
+  .rail .co { grid-template-columns: 1fr; justify-items: center; padding: 0; margin-top: 1px; }
+  .rail .co b { font-size: 11px; }
+  .rail .cos { margin-top: 14px; border-top: 1px solid var(--rail-line); padding-top: 8px; }
+  .cov .c3 { display: none; }
+}
+@media (max-width: 1020px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .list { border-right: 0; }
+  .detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, calc(100vw - 96px)); z-index: 20; border-left: 1px solid var(--line-strong); box-shadow: -18px 0 40px -18px rgba(20, 22, 26, .35); }
+  .cov .c2 { display: none; }
+  .bar, .page-head, .co-head, .tabs { padding-left: 16px; padding-right: 16px; }
+  .cov-wrap { padding: 0 16px 16px; }
+  .tools { padding-left: 16px; }
+  .find th:first-child, .find td:first-child { padding-left: 16px; }
+}
+@media (max-width: 720px) {
+  .find .src, .find th.src { display: none; }
+  .cov .c1 { display: none; }
+  .search kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M5 4.5h9l5 5V19.5H5z"/><path d="M14 4.5v5h5"/><path d="M8.5 14h7M8.5 17h4.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-compare" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="16" rx="1.5"/></symbol>
+    <symbol id="i-memo" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M9 12h6M9 15.5h6"/></symbol>
+    <symbol id="i-usage" viewBox="0 0 24 24"><path d="M4 19.5h16"/><path d="M7 16v-5M12 16V6.5M17 16v-8"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20.5V4.5"/><path d="M6 5h11l-2.2 3.8L17 12.5H6"/></symbol>
+    <symbol id="i-none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12h7"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4.5v10.5M7.5 11l4.5 4.5 4.5-4.5M5 19.5h14"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+    <symbol id="i-dn" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M13.5 5H19v5.5M19 5l-8 8"/><path d="M17 14v4.5H5.5V7H10"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 19l1-4L16.5 4.5l3 3L9 18z"/><path d="M14.5 6.5l3 3"/></symbol>
+    <symbol id="i-ask" viewBox="0 0 24 24"><path d="M5 5.5h14v10.5h-8l-4 3.5V16H5z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19 12a7 7 0 1 1-2.2-5.1"/><path d="M19.5 4.5V8H16"/></symbol>
+  </defs>
+</svg>
+
+<aside class="rail">
+  <a class="wordmark" href="coverage.html"><svg class="icon"><use href="#i-logo"/></svg><span>filing-room</span></a>
+  <nav aria-label="Workspace">
+    <a class="item" href="coverage.html"><svg class="icon"><use href="#i-list"/></svg><span>Coverage</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-compare"/></svg><span>Compare</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-memo"/></svg><span>Memos</span></a>
+  </nav>
+  <h2>Recent</h2>
+  <nav class="cos" aria-label="Recent companies">
+    <a class="co" href="company.html" aria-current="page"><b>BILL</b><span>BILL Holdings</span></a>
+    <a class="co" href="#"><b>RPD</b><span>Rapid7</span></a>
+    <a class="co" href="#"><b>WK</b><span>Workiva</span></a>
+  </nav>
+  <p class="mock-note">Mock-up. Content is from BILL's existing run.</p>
+  <div class="foot">
+    <a class="item" href="#"><svg class="icon"><use href="#i-usage"/></svg><span>Usage</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-gear"/></svg><span>Settings</span></a>
+  </div>
+</aside>
+
+<main>
+  <header class="co-head">
+    <nav class="crumb" aria-label="Breadcrumb"><a href="coverage.html">Coverage</a><svg class="icon"><use href="#i-chev"/></svg><span>BILL</span></nav>
+    <div class="title-row">
+      <h1>BILL Holdings, Inc.</h1>
+      <span class="tick">BILL</span>
+      <span class="sp"></span>
+      <button class="btn ghost"><svg class="icon"><use href="#i-refresh"/></svg>Check for new filings</button>
+      <button class="btn"><svg class="icon"><use href="#i-down"/></svg>Export</button>
+      <button class="btn primary"><svg class="icon"><use href="#i-ask"/></svg>Ask a question</button>
+    </div>
+    <p class="meta">Fiscal year ends June 30 · 8 filings through the FY2026 10-K, filed Aug 20, 2026 · Updated Sep 27, 2026</p>
+    <dl class="figures">
+      <div><dt>Revenue, FY2026</dt><dd>$1,653.2M<small>+13.0%</small></dd></div>
+      <div><dt>Gross margin</dt><dd>80.9%</dd></div>
+      <div><dt>Operating income</dt><dd>($73.4M)</dd></div>
+      <div><dt>Free cash flow</dt><dd>$354.7M<small>21.5%</small></dd></div>
+      <div><dt>Cash</dt><dd>$1,031.1M</dd></div>
+      <div><dt>Debt principal</dt><dd>$1,853.5M</dd></div>
+      <div><dt>Employees</dt><dd>1,683</dd></div>
+    </dl>
+  </header>
+
+  <nav class="tabs" aria-label="Company sections">
+    <a href="#">Overview</a>
+    <a href="#" aria-current="page">Findings <i>40</i></a>
+    <a href="#">Screening memo</a>
+    <a href="#">Q&amp;A</a>
+    <a href="#">Filings <i>8</i></a>
+  </nav>
+
+  <div class="work">
+    <section class="list" aria-label="Findings">
+      <div class="tools">
+        <label class="filter"><svg class="icon"><use href="#i-search"/></svg><input type="search" placeholder="Filter findings" aria-label="Filter findings"></label>
+        <div class="seg" role="group" aria-label="Status">
+          <button aria-pressed="true">All<i>40</i></button>
+          <button aria-pressed="false">Verified<i>33</i></button>
+          <button aria-pressed="false">To review<i>1</i></button>
+          <button aria-pressed="false">Not disclosed<i>6</i></button>
+        </div>
+      </div>
+      <div class="scroll" style="flex:1;min-height:0">
+        <table class="find">
+          <thead><tr><th>Finding</th><th class="num">Value</th><th class="src">Source</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="group"><td colspan="4">Ownership and governance<i>7</i></td></tr>
+            <tr aria-selected="true">
+              <td class="what"><span class="label">Activist involvement</span><span class="gist">Cooperation agreement with Starboard Value, Oct 15, 2025</span></td>
+              <td class="num val">Yes</td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Holders above 5%</span><span class="gist">Vanguard 10.9%, BlackRock 9.0%, Starboard 8.6%, ER Collective 7.6%</span></td>
+              <td class="num val">4</td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Board structure and voting</span><span class="gist">Classified board, three staggered classes; one share class, one vote each</span></td>
+              <td class="num val">Staggered</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Board size and independence</span><span class="gist">13 directors, 12 independent</span></td>
+              <td class="num val">13</td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Chief executive</span><span class="gist">René Lacerte, founder and chair, CEO since 2006</span></td>
+              <td class="num val"></td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">CEO total compensation</span><span class="gist">Fiscal 2025 summary compensation table</span></td>
+              <td class="num val">$16.1M</td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Say-on-pay support</span><span class="gist">2024 annual meeting, share of votes cast</span></td>
+              <td class="num val">87%</td><td class="src">DEF 14A 2025</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+
+            <tr class="group"><td colspan="4">Capital structure<i>4</i></td></tr>
+            <tr>
+              <td class="what"><span class="label">Debt outstanding</span><span class="gist">2027 and 2030 convertible notes; 2021 and 2025 credit facilities</span></td>
+              <td class="num val">$1,853.5M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status warn"><svg class="icon"><use href="#i-flag"/></svg>To review</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Cash and equivalents</span><span class="gist">As of June 30, 2026</span></td>
+              <td class="num val">$1,031.1M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Buyback authorization remaining</span><span class="gist">Under the $1.0B authorization announced May 2026</span></td>
+              <td class="num val">$702.2M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Shares repurchased</span><span class="gist">Cash paid in FY2026</span></td>
+              <td class="num val">$560.5M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+
+            <tr class="group"><td colspan="4">Revenue and customers<i>10</i></td></tr>
+            <tr>
+              <td class="what"><span class="label">Total revenue</span><span class="gist">FY2026, up from $1,462.6M</span></td>
+              <td class="num val">$1,653.2M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Revenue mix</span><span class="gist">AP/AR $740.1M, Spend and Expense $675.6M, float $148.4M</span></td>
+              <td class="num val"></td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Net dollar retention</span><span class="gist">Fiscal 2026</span></td>
+              <td class="num val">95%</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Customers</span><span class="gist">Businesses using its solutions, June 30, 2026</span></td>
+              <td class="num val">479,300</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Customer concentration</span><span class="gist">No customer above 10% of revenue in FY2024 to FY2026</span></td>
+              <td class="num val">None</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Remaining performance obligations</span><span class="gist">About 62% recognized within one year</span></td>
+              <td class="num val">$55.6M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Annual recurring revenue</span><span class="gist">The company reports payment volume and retention, not ARR</span></td>
+              <td class="num val"></td><td class="src"></td>
+              <td class="st"><span class="status none"><svg class="icon"><use href="#i-none"/></svg>Not disclosed</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">International revenue</span><span class="gist">No geographic breakdown in the filings</span></td>
+              <td class="num val"></td><td class="src"></td>
+              <td class="st"><span class="status none"><svg class="icon"><use href="#i-none"/></svg>Not disclosed</span></td>
+            </tr>
+
+            <tr class="group"><td colspan="4">Risk and legal<i>4</i></td></tr>
+            <tr>
+              <td class="what"><span class="label">Key risks</span><span class="gist">Card credit exposure, cancelable contracts, convertible note conversion</span></td>
+              <td class="num val"></td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Restructuring</span><span class="gist">Three workforce reductions in FY2026, the largest about 30%</span></td>
+              <td class="num val">$90.9M</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+            <tr>
+              <td class="what"><span class="label">Material litigation</span><span class="gist">Not party to proceedings it considers material</span></td>
+              <td class="num val">None</td><td class="src">10-K FY2026</td>
+              <td class="st"><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>Verified</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="detail" aria-label="Finding detail">
+      <div class="d-head">
+        <span class="where">Ownership and governance · 1 of 7</span>
+        <span class="sp"></span>
+        <button class="btn sm sq ghost" aria-label="Previous finding"><svg class="icon"><use href="#i-up"/></svg></button>
+        <button class="btn sm sq ghost" aria-label="Next finding"><svg class="icon"><use href="#i-dn"/></svg></button>
+        <button class="btn sm sq ghost" aria-label="Close panel"><svg class="icon"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="d-body scroll">
+        <h2>Activist involvement</h2>
+        <p class="lead">BILL signed a cooperation agreement with Starboard Value on October 15, 2025, after Starboard gave notice on September 5 that it would nominate four directors.<span class="ref">5</span></p>
+        <ul class="terms">
+          <li>Board expanded from 12 to 13 seats; Peter A. Feld and Lee Kirkpatrick appointed, Stephen Fisher resigned.<span class="ref" aria-current="true">1</span></li>
+          <li>Starboard votes with the Board at the 2025 annual meeting, with limited exceptions, and withdrew its nominations.<span class="ref" aria-current="true">1</span><span class="ref">5</span></li>
+          <li>No increase beyond 13 directors without Starboard's consent until shortly before the 2026 nomination deadline.<span class="ref">2</span></li>
+          <li>Mr. Feld must resign if Starboard's holding falls below a minimum threshold.<span class="ref">3</span></li>
+          <li>BILL reimburses Starboard's expenses up to $575,000.<span class="ref">6</span></li>
+        </ul>
+        <dl class="facts">
+          <div><dt>Status</dt><dd><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>6 of 6 quotes found in filing</span></dd></div>
+          <div><dt>As of</dt><dd>Oct 15, 2025</dd></div>
+          <div><dt>Confidence</dt><dd>High</dd></div>
+          <div><dt>Related</dt><dd>Holders above 5% · Board size</dd></div>
+        </dl>
+        <div class="acts">
+          <button class="btn sm ghost"><svg class="icon"><use href="#i-copy"/></svg>Copy with citation</button>
+          <button class="btn sm ghost"><svg class="icon"><use href="#i-note"/></svg>Add note</button>
+          <button class="btn sm ghost"><svg class="icon"><use href="#i-flag"/></svg>Flag for review</button>
+        </div>
+
+        <div class="doc">
+          <div class="doc-head">
+            <div class="t"><b>Proxy statement (DEF 14A)</b><span>Filed Oct 27, 2025 · Proposal No. 1: Election of Directors</span></div>
+            <span class="sp"></span>
+            <span class="pos">Passage 1 of 6</span>
+            <button class="btn sm sq ghost" aria-label="Previous passage"><svg class="icon"><use href="#i-up"/></svg></button>
+            <button class="btn sm sq ghost" aria-label="Next passage"><svg class="icon"><use href="#i-dn"/></svg></button>
+            <a class="btn sm" href="#"><svg class="icon"><use href="#i-ext"/></svg>sec.gov</a>
+          </div>
+          <div class="filing">
+            <h3>Cooperation Agreement</h3>
+            <p>As previously disclosed, on October 15, 2025, we entered into a cooperation agreement (the Cooperation Agreement) with Starboard Value LP and Starboard Value and Opportunity Master Fund Ltd and certain of their affiliates (collectively, Starboard), in which, among other things, <mark class="on"><sup>1</sup>(i) we confirmed the resignation of Stephen Fisher as a Class II director, (ii) we increased the size of the Board from 12 to 13 directors and appointed Peter A. Feld and Lee Kirkpatrick as Class II directors, (iii) we agreed that Natalie Derse, David Hornik, Katherine (Allie) Kline and Beth Johnson would be nominated for election as Class III directors at the Annual Meeting and (iv) Starboard agreed to vote all shares of our common stock beneficially owned by it in accordance with the Board’s recommendations at the Annual Meeting, subject to certain limited exceptions.</mark> <mark><sup>2</sup>The Cooperation Agreement also provided that we may not increase the size of the Board to more than 13 directors without Starboard’s prior written consent until the earlier of (x) 15 business days prior to the deadline for submission of stockholder nominations for the 2026 Annual Meeting of Stockholders pursuant to our Bylaws or (y) the date that is 100 days prior to the first anniversary of the Annual Meeting.</mark> <mark><sup>3</sup>The Cooperation Agreement also contained a requirement that Mr. Feld resign from the Board if Starboard’s ownership of our common stock drops below a minimum threshold and certain non-disparagement confidentiality obligations.</mark></p>
+            <p class="ctx">Each nominee has consented to serve if elected. If any nominee becomes unavailable to serve as a director before the Annual Meeting, the Board may designate a substitute nominee. In that case, the persons named as proxies will vote for the substitute nominee designated by the Board. At this time, the Board knows of no reason why any of the Board’s nominees would not be able to serve as a director if elected.</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+</body>
+</html>

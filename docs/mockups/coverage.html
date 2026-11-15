@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coverage · filing-room (mock-up)</title>
+<style>
+/* Approved mock-up for the app (visual contract). Static; not wired to the API. */
+:root {
+  --ink: #14161a;
+  --ink-2: #3c424c;
+  --ink-3: #5d6470;
+  --ground: #ffffff;
+  --panel: #f6f6f3;
+  --panel-2: #eeeeea;
+  --line: #e4e4df;
+  --line-strong: #cdcdc7;
+  --rail: #15171b;
+  --rail-2: #24282f;
+  --rail-line: #2c3038;
+  --rail-text: #c8ccd3;
+  --rail-muted: #8d939d;
+  --mark: #ffe680;
+  --mark-strong: #ffcf33;
+  --ok: #17694a;
+  --ok-wash: #e5f2eb;
+  --warn: #8a4706;
+  --warn-wash: #fbeedb;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Georgia, serif;
+  --rail-w: 208px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font: 13px/1.45 var(--sans);
+  color: var(--ink);
+  background: var(--ground);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+  overflow: hidden;
+}
+::selection { background: var(--mark); color: var(--ink); }
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+.rail :focus-visible { outline-color: #fff; }
+.icon { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.num { text-align: right; white-space: nowrap; }
+.muted { color: var(--ink-3); }
+.scroll { overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+/* ---------- rail ---------- */
+.rail { background: var(--rail); color: var(--rail-text); display: flex; flex-direction: column; height: 100vh; padding: 14px 10px 12px; min-width: 0; }
+.wordmark { display: flex; align-items: center; gap: 9px; padding: 4px 8px 16px; color: #fff; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.wordmark svg { width: 18px; height: 18px; }
+.rail nav { display: grid; gap: 1px; }
+.rail a.item { display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 8px; border-radius: 6px; color: var(--rail-text); white-space: nowrap; }
+.rail a.item:hover { background: var(--rail-2); color: #fff; }
+.rail a.item[aria-current] { background: var(--rail-2); color: #fff; font-weight: 600; }
+.rail h2 { margin: 22px 8px 6px; font-size: 12px; font-weight: 500; color: var(--rail-muted); }
+.rail .co { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; height: 30px; padding: 0 8px; border-radius: 6px; }
+.rail .co b { color: #fff; font-weight: 600; font-size: 12px; letter-spacing: 0.02em; }
+.rail .co span { color: var(--rail-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rail .co:hover, .rail .co[aria-current] { background: var(--rail-2); }
+.rail .co[aria-current] span { color: var(--rail-text); }
+.rail .foot { margin-top: auto; border-top: 1px solid var(--rail-line); padding-top: 8px; display: grid; gap: 1px; }
+.rail .foot .item span.r { margin-left: auto; color: var(--rail-muted); }
+
+/* ---------- main frame ---------- */
+main { display: flex; flex-direction: column; height: 100vh; min-width: 0; }
+.bar { display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 24px; border-bottom: 1px solid var(--line); flex: none; }
+.search { position: relative; flex: 1; max-width: 520px; }
+.search .icon { position: absolute; left: 10px; top: 8px; color: var(--ink-3); }
+.search input { width: 100%; height: 32px; padding: 0 44px 0 34px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.search input::placeholder { color: var(--ink-3); }
+.search input:hover { border-color: var(--line-strong); }
+.search input:focus { outline: 2px solid var(--ink); outline-offset: 1px; background: var(--ground); }
+.search kbd { position: absolute; right: 8px; top: 7px; font: 11px/1 var(--sans); color: var(--ink-3); border: 1px solid var(--line-strong); border-radius: 4px; padding: 3px 5px; background: var(--ground); }
+.bar .sp { flex: 1; }
+
+.btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--ground); font-weight: 550; white-space: nowrap; cursor: pointer; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--panel); border-color: #b9b9b2; }
+.btn:active { background: var(--panel-2); }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.primary:hover { background: #2a2e36; border-color: #2a2e36; }
+.btn.ghost { border-color: transparent; color: var(--ink-2); padding: 0 8px; }
+.btn.ghost:hover { background: var(--panel-2); border-color: transparent; }
+.btn.sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.btn.sq { width: 28px; padding: 0; justify-content: center; }
+
+.seg { display: inline-flex; gap: 2px; padding: 2px; background: var(--panel-2); border-radius: 8px; }
+.seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); font-weight: 550; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--ground); color: var(--ink); box-shadow: 0 1px 2px rgba(20, 22, 26, .12); }
+.seg button i { font-style: normal; color: var(--ink-3); margin-left: 5px; font-weight: 400; }
+
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-weight: 550; }
+.status .icon { width: 14px; height: 14px; }
+.status.ok { color: var(--ok); }
+.status.warn { color: var(--warn); }
+.status.none { color: var(--ink-3); font-weight: 400; }
+
+table { border-collapse: collapse; width: 100%; }
+th { font-size: 12px; font-weight: 500; color: var(--ink-3); text-align: left; white-space: nowrap; }
+
+/* ---------- coverage ---------- */
+.page-head { display: flex; align-items: center; gap: 14px; padding: 22px 24px 14px; flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; }
+.page-head .count { color: var(--ink-3); }
+.cov-wrap { flex: 1; min-height: 0; padding: 0 24px 24px; }
+.cov th { position: sticky; top: 0; background: var(--ground); padding: 8px 10px; border-bottom: 1px solid var(--line-strong); z-index: 1; }
+.cov td { padding: 0 10px; height: 52px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.cov th:first-child, .cov td:first-child { padding-left: 8px; }
+.cov tbody tr { cursor: pointer; }
+.cov tbody tr:hover td { background: var(--panel); }
+.cov .name { display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: baseline; min-width: 176px; }
+.cov .name b { font-weight: 650; letter-spacing: 0.02em; }
+.cov .name span { overflow: hidden; text-overflow: ellipsis; }
+.cov .sub { display: block; font-size: 12px; color: var(--ink-3); }
+.cov .neg { color: var(--ink); }
+.cov .pending td.wait { color: var(--ink-3); }
+.prog { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.prog .track { width: 96px; height: 4px; border-radius: 2px; background: var(--panel-2); overflow: hidden; }
+.prog .track i { display: block; height: 100%; background: var(--ink); border-radius: 2px; }
+
+/* ---------- company ---------- */
+.co-head { padding: 16px 24px 0; flex: none; }
+.crumb { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 12px; }
+.crumb a:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.crumb .icon { width: 12px; height: 12px; }
+.title-row { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
+.title-row h1 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.015em; }
+.tick { font-size: 12px; font-weight: 600; letter-spacing: 0.03em; padding: 2px 6px; border: 1px solid var(--line-strong); border-radius: 5px; }
+.title-row .sp { flex: 1; }
+.meta { margin: 4px 0 0; color: var(--ink-3); }
+.figures { display: flex; margin: 14px 0 0; padding: 10px 0; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.figures div { padding: 0 20px; border-left: 1px solid var(--line); white-space: nowrap; }
+.figures div:first-child { padding-left: 0; border-left: 0; }
+.figures dt { font-size: 12px; color: var(--ink-3); }
+.figures dd { margin: 1px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.005em; }
+.figures dd small { font-size: 12px; font-weight: 400; color: var(--ink-3); margin-left: 5px; }
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); padding: 0 24px; flex: none; }
+.tabs a { position: relative; height: 38px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); font-weight: 550; white-space: nowrap; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current] { color: var(--ink); }
+.tabs a[aria-current]::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ink); }
+.tabs a i { font-style: normal; font-weight: 400; color: var(--ink-3); }
+
+.work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+.list { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.tools { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 24px; flex: none; }
+.filter { position: relative; flex: 1; min-width: 90px; max-width: 220px; }
+.filter .icon { position: absolute; left: 8px; top: 7px; width: 14px; height: 14px; color: var(--ink-3); }
+.filter input { width: 100%; height: 28px; padding: 0 8px 0 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--ground); font-size: 12px; }
+.filter input::placeholder { color: var(--ink-3); }
+.find th { position: sticky; top: 0; z-index: 1; background: var(--ground); padding: 6px 10px; border-bottom: 1px solid var(--line-strong); }
+.find th:first-child, .find td:first-child { padding-left: 24px; }
+.find td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.find tr.group td { padding-top: 16px; padding-bottom: 6px; font-size: 12px; font-weight: 600; color: var(--ink-2); background: var(--ground); border-bottom: 1px solid var(--line-strong); }
+.find tr.group td i { font-style: normal; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+.find tbody tr:not(.group) { cursor: pointer; }
+.find tbody tr:not(.group):hover td { background: var(--panel); }
+.find tr[aria-selected="true"] td { background: var(--panel-2); }
+.find tr[aria-selected="true"]:hover td { background: var(--panel-2); }
+.find tr[aria-selected="true"] .label { font-weight: 650; }
+.find .label { font-weight: 550; }
+.find .gist { display: block; color: var(--ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.find td.what { max-width: 0; width: 100%; }
+.find td.val { font-weight: 600; }
+.find td.src { color: var(--ink-3); white-space: nowrap; font-size: 12px; padding-top: 8px; }
+.find td.st { padding-top: 8px; padding-right: 16px; }
+
+/* detail + source */
+.detail { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--ground); }
+.d-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px 10px 22px; border-bottom: 1px solid var(--line); flex: none; }
+.d-head .where { color: var(--ink-3); font-size: 12px; }
+.d-head .sp { flex: 1; }
+.d-body { flex: 1; min-height: 0; padding: 18px 22px 28px; }
+.d-body h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.lead { margin: 8px 0 0; font-size: 14px; line-height: 1.5; max-width: 68ch; }
+.terms { margin: 10px 0 0; padding: 0; list-style: none; max-width: 70ch; }
+.terms li { position: relative; padding: 3px 0 3px 14px; color: var(--ink-2); }
+.terms li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 4px; height: 4px; border-radius: 50%; background: var(--ink-3); }
+.ref { display: inline-flex; align-items: center; justify-content: center; min-width: 17px; height: 17px; padding: 0 4px; margin-left: 3px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--ground); font-size: 11px; font-weight: 600; color: var(--ink-2); vertical-align: 1px; cursor: pointer; }
+.ref:hover { border-color: var(--ink); color: var(--ink); }
+.ref[aria-current] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 16px 0 0; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.facts dt { font-size: 12px; color: var(--ink-3); }
+.facts dd { margin: 1px 0 0; font-weight: 550; }
+.acts { display: flex; gap: 4px; margin: 10px 0 0 -8px; flex-wrap: wrap; }
+
+.doc { margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.doc-head { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.doc-head .t { min-width: 0; }
+.doc-head b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-head .t span { display: block; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-head .sp { flex: 1; }
+.doc-head .pos { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.filing { padding: 18px 22px 22px; font: 15px/1.62 var(--serif); color: #23262c; font-variant-numeric: normal; }
+.filing h3 { margin: 0 0 8px; font: 600 15px/1.4 var(--serif); }
+.filing p { margin: 0 0 12px; max-width: 72ch; }
+.filing .ctx { color: #5b616b; }
+.filing mark { background: var(--mark); color: inherit; padding: 1px 0; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.filing mark.on { background: var(--mark-strong); }
+.filing mark sup { font: 600 10px/1 var(--sans); margin-right: 3px; color: #4a3a00; vertical-align: 5px; }
+
+.rail .mock-note { margin: auto 8px 12px; font-size: 12px; line-height: 1.4; color: var(--rail-muted); }
+.rail .mock-note + .foot { margin-top: 0; }
+
+/* ---------- narrower windows ---------- */
+@media (max-width: 1240px) {
+  :root { --rail-w: 52px; }
+  .rail { padding: 14px 8px 12px; align-items: stretch; }
+  .wordmark span, .rail a.item span, .rail h2, .rail .co span, .rail .foot .r, .rail .mock-note { display: none; }
+  .rail .foot { margin-top: auto !important; }
+  .wordmark { justify-content: center; padding: 4px 0 16px; }
+  .rail a.item { justify-content: center; padding: 0; }
+  .rail .co { grid-template-columns: 1fr; justify-items: center; padding: 0; margin-top: 1px; }
+  .rail .co b { font-size: 11px; }
+  .rail .cos { margin-top: 14px; border-top: 1px solid var(--rail-line); padding-top: 8px; }
+  .cov .c3 { display: none; }
+}
+@media (max-width: 1020px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .list { border-right: 0; }
+  .detail { position: fixed; top: 0; right: 0; bottom: 0; width: min(600px, calc(100vw - 96px)); z-index: 20; border-left: 1px solid var(--line-strong); box-shadow: -18px 0 40px -18px rgba(20, 22, 26, .35); }
+  .cov .c2 { display: none; }
+  .bar, .page-head, .co-head, .tabs { padding-left: 16px; padding-right: 16px; }
+  .cov-wrap { padding: 0 16px 16px; }
+  .tools { padding-left: 16px; }
+  .find th:first-child, .find td:first-child { padding-left: 16px; }
+}
+@media (max-width: 720px) {
+  .find .src, .find th.src { display: none; }
+  .cov .c1 { display: none; }
+  .search kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M5 4.5h9l5 5V19.5H5z"/><path d="M14 4.5v5h5"/><path d="M8.5 14h7M8.5 17h4.5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-compare" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="16" rx="1.5"/></symbol>
+    <symbol id="i-memo" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M9 12h6M9 15.5h6"/></symbol>
+    <symbol id="i-usage" viewBox="0 0 24 24"><path d="M4 19.5h16"/><path d="M7 16v-5M12 16V6.5M17 16v-8"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 20.5V4.5"/><path d="M6 5h11l-2.2 3.8L17 12.5H6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4.5v10.5M7.5 11l4.5 4.5 4.5-4.5M5 19.5h14"/></symbol>
+  </defs>
+</svg>
+
+<aside class="rail">
+  <a class="wordmark" href="coverage.html"><svg class="icon"><use href="#i-logo"/></svg><span>filing-room</span></a>
+  <nav aria-label="Workspace">
+    <a class="item" href="coverage.html" aria-current="page"><svg class="icon"><use href="#i-list"/></svg><span>Coverage</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-compare"/></svg><span>Compare</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-memo"/></svg><span>Memos</span></a>
+  </nav>
+  <h2>Recent</h2>
+  <nav class="cos" aria-label="Recent companies">
+    <a class="co" href="company.html"><b>BILL</b><span>BILL Holdings</span></a>
+    <a class="co" href="#"><b>RPD</b><span>Rapid7</span></a>
+    <a class="co" href="#"><b>WK</b><span>Workiva</span></a>
+  </nav>
+  <p class="mock-note">Mock-up. BILL, RPD and WK figures come from existing runs; the two in-progress rows are illustrative.</p>
+  <div class="foot">
+    <a class="item" href="#"><svg class="icon"><use href="#i-usage"/></svg><span>Usage</span></a>
+    <a class="item" href="#"><svg class="icon"><use href="#i-gear"/></svg><span>Settings</span></a>
+  </div>
+</aside>
+
+<main>
+  <div class="bar">
+    <label class="search">
+      <svg class="icon"><use href="#i-search"/></svg>
+      <input type="search" placeholder="Find a company by name, ticker or CIK" aria-label="Find a company">
+      <kbd>⌘K</kbd>
+    </label>
+    <span class="sp"></span>
+    <button class="btn"><svg class="icon"><use href="#i-down"/></svg>Export</button>
+    <button class="btn primary"><svg class="icon"><use href="#i-plus"/></svg>Add company</button>
+  </div>
+
+  <div class="page-head">
+    <h1>Coverage</h1>
+    <span class="count">5 companies</span>
+    <span style="flex:1"></span>
+    <div class="seg" role="group" aria-label="Filter">
+      <button aria-pressed="true">All<i>5</i></button>
+      <button aria-pressed="false">Ready<i>3</i></button>
+      <button aria-pressed="false">In progress<i>2</i></button>
+      <button aria-pressed="false">To review<i>2</i></button>
+    </div>
+  </div>
+
+  <div class="cov-wrap scroll">
+    <table class="cov">
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th class="c1">Fiscal year</th>
+          <th class="num">Revenue</th>
+          <th class="num">Growth</th>
+          <th class="num c2">Gross margin</th>
+          <th class="num c3">Op. margin</th>
+          <th class="num c2">FCF margin</th>
+          <th class="c1">Latest filing</th>
+          <th>Findings</th>
+          <th>Review</th>
+          <th class="c3">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr onclick="location.href='company.html'">
+          <td><a class="name" href="company.html"><b>BILL</b><span>BILL Holdings, Inc.</span></a></td>
+          <td class="c1">FY2026<span class="sub">ended Jun 30</span></td>
+          <td class="num">$1,653.2M</td>
+          <td class="num">13.0%</td>
+          <td class="num c2">80.9%</td>
+          <td class="num c3">(4.4%)</td>
+          <td class="num c2">21.5%</td>
+          <td class="c1">10-K<span class="sub">Aug 20, 2026</span></td>
+          <td>34 of 40<span class="sub">6 not disclosed</span></td>
+          <td><span class="status warn"><svg class="icon"><use href="#i-flag"/></svg>1 to review</span></td>
+          <td class="c3 muted">Sep 27</td>
+        </tr>
+        <tr>
+          <td><a class="name" href="#"><b>RPD</b><span>Rapid7, Inc.</span></a></td>
+          <td class="c1">FY2025<span class="sub">ended Dec 31</span></td>
+          <td class="num">$859.8M</td>
+          <td class="num">1.9%</td>
+          <td class="num c2">70.3%</td>
+          <td class="num c3">1.3%</td>
+          <td class="num c2">15.1%</td>
+          <td class="c1">10-Q<span class="sub">Aug 10, 2026</span></td>
+          <td>33 of 40<span class="sub">7 not disclosed</span></td>
+          <td><span class="status warn"><svg class="icon"><use href="#i-flag"/></svg>1 to review</span></td>
+          <td class="c3 muted">Sep 27</td>
+        </tr>
+        <tr>
+          <td><a class="name" href="#"><b>WK</b><span>Workiva Inc.</span></a></td>
+          <td class="c1">FY2025<span class="sub">ended Dec 31</span></td>
+          <td class="num">$884.6M</td>
+          <td class="num">19.7%</td>
+          <td class="num c2">78.5%</td>
+          <td class="num c3">(4.8%)</td>
+          <td class="num c2">15.6%</td>
+          <td class="c1">10-Q<span class="sub">Aug 4, 2026</span></td>
+          <td>35 of 40<span class="sub">5 not disclosed</span></td>
+          <td><span class="status ok"><svg class="icon"><use href="#i-check"/></svg>All verified</span></td>
+          <td class="c3 muted">Sep 27</td>
+        </tr>
+        <tr class="pending">
+          <td><a class="name" href="#"><b>BOX</b><span>Box, Inc.</span></a></td>
+          <td class="c1">FY2026<span class="sub">ended Jan 31</span></td>
+          <td class="num wait">–</td>
+          <td class="num wait">–</td>
+          <td class="num wait c2">–</td>
+          <td class="num wait c3">–</td>
+          <td class="num wait c2">–</td>
+          <td class="c1">10-Q<span class="sub">Aug 26, 2026</span></td>
+          <td colspan="2"><span class="prog"><span class="track"><i style="width:55%"></i></span>Answering, 22 of 40</span></td>
+          <td class="c3 muted">Started 2 min ago</td>
+        </tr>
+        <tr class="pending">
+          <td><a class="name" href="#"><b>CXM</b><span>Sprinklr, Inc.</span></a></td>
+          <td class="c1 wait">–</td>
+          <td class="num wait">–</td>
+          <td class="num wait">–</td>
+          <td class="num wait c2">–</td>
+          <td class="num wait c3">–</td>
+          <td class="num wait c2">–</td>
+          <td class="c1 wait">–</td>
+          <td colspan="2"><span class="prog"><span class="track"><i style="width:14%"></i></span>Reading filings, 3 of 8</span></td>
+          <td class="c3 muted">Started just now</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+</body>
+</html>

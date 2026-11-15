@@ -1,6 +1,52 @@
 # filing-room
 
-A diligence agent that answers a 40-question private-equity diligence checklist from a company's public SEC filings, cites a verifiable passage for every answer, drafts an IC-style memo from those answers, and is measured against a hand-built golden set, including a company held out until the end.
+A first-look screening tool for US public companies, for take-private deal teams and public-equity analysts. Add a company and filing-room reads its recent SEC filings and gives you:
+
+- **39 findings** across ownership and governance, capital structure and allocation, revenue and customers, profitability and cash flow, people, and competition and risk. Each one is a labelled fact with a value, a period and the filing quotes behind it. Code checks every quote word for word against the filing; a finding is **Verified**, **To review** (with the reason), or **Not disclosed**.
+- **The source, one click away.** Open any finding, memo footnote or answer and the filing passage appears beside it with every quote highlighted, plus a link to the document on sec.gov.
+- **Five years of financials** from the SEC's structured XBRL data, as reported in each year's 10-K.
+- **A screening memo** whose factual sentences cite findings, with sentences an automatic claim check can't support marked. Exports to Markdown and prints cleanly.
+- **Q&A** per company: follow-up questions answered only from the filings, with the same citations.
+- **Notes, flags and review marks** on findings, and a CSV export of everything with source URLs.
+
+Sources: the last two 10-Ks, last four 10-Qs, latest proxy statement and latest earnings release, from SEC EDGAR. Nothing else.
+
+## Run it
+
+Needs [uv](https://docs.astral.sh/uv/), Node 22, and an Anthropic API key.
+
+```
+cp .env.example .env                                   # ANTHROPIC_API_KEY, and an email for EDGAR's User-Agent
+npm --prefix web install && npm --prefix web run build
+./fr ui                                                # http://127.0.0.1:8787
+```
+
+Coverage starts empty: find a company by name or ticker and confirm the cost to add it.
+
+**Cost and limits.** Screening a company costs about $1.25 in model usage and takes 4–6 minutes; each screening stops at $2.50 and screenings are capped at $3/day (`RUN_MAX_USD_PER_DAY`). A question costs up to $0.05, capped at $1/day (`UI_MAX_USD_PER_DAY`). The cost is shown before every paid action and confirmed in the request; the actual cost is shown after, and the Usage screen keeps the totals. If the app is closed mid-screening, resuming keeps the answers already paid for.
+
+**Private by construction.** The server listens on 127.0.0.1 only, rejects requests whose Host isn't the app itself (blocks DNS rebinding), and requires a custom header on every POST (blocks cross-site requests).
+
+## How it works
+
+```
+EDGAR ──fetch──> filings ──parse──> SEC items ──chunk──> BM25 index
+                                                             │
+39 screening questions ──> retrieve passages ────────────────┘
+                       ──> Claude Sonnet 5: answer + value + period + verbatim quotes
+                       ──> code checks every quote appears in the passage it names
+                       ──> Claude Haiku 5.5: one-line gist and cited points (no new facts; guarded)
+answered findings      ──> Claude Sonnet 5: screening memo; Claude Opus 5: claim check
+SEC XBRL company facts ──> five-year financials, and a cross-check of numeric findings
+```
+
+- **Backend:** plain Python (`filingroom/`), stdlib HTTP server, three dependencies (`anthropic`, `beautifulsoup4`, `lxml`). App state lives in `data/app/` (`FILINGROOM_APP_DIR` to move it); downloaded filings are cached in `data/raw/`.
+- **Frontend:** React + TypeScript + Vite in `web/`, hand-written CSS. Design notes in DESIGN.md; the approved mockups are in `docs/mockups/`.
+- **Development:** `FILINGROOM_APP_DIR=data/app-dev uv run python -m filingroom.dev_import BILL --run runs/<run>.json` imports an existing CLI run with no API call; `npm --prefix web run dev` serves the frontend on :5173 against `./fr ui` on :8787; `uv run python -m unittest discover -s tests -t .` runs the tests.
+
+## How accuracy was measured
+
+The answering engine was built as a measured experiment before it became a tool: a written hypothesis, a golden answer set, two companies to tune on and one held out until the system was frozen. The eval harness (`./fr eval`, `golden/`, `results/`, `CHANGELOG-evals.md`) is kept as regression tooling: any change to what the model is sent is re-measured with it.
 
 **Hypothesis:** an agent grounded in a company's public filings can answer a standard diligence checklist with cited, verifiable answers accurately enough to replace the first pass of diligence prep.
 **Pass bar (set before building):** on a held-out company, ≥85% of answers correct, ≥90% of citations support their answer, and the agent says "not in the filings" when that's the truth.
@@ -18,7 +64,7 @@ A diligence agent that answers a 40-question private-equity diligence checklist 
 
 The weakness: when retrieval misses the right passage, the agent says "not found" rather than guessing. That's the safe failure mode (no invented answers), but it cost 3 of the 4 held-out misses.
 
-## How it works
+### How the engine works
 
 ```
 EDGAR ──fetch──> filings (HTML) ──parse──> sections (Item 1A, Item 7, ...) ──chunk──> keyword index (BM25)
@@ -37,7 +83,7 @@ answered checklist ──> Claude: IC memo, every factual sentence tagged with t
 - **Ground truth:** 120 golden items (40 questions × 3 companies). Numbers come from EDGAR's XBRL financial data, generated automatically; text answers were drafted from the filings with the exact supporting quote, and are checked in `golden/REVIEW.md`.
 - **No vector database:** filings use consistent vocabulary and the checklist says where each answer should live, so plain-Python keyword search (BM25) was enough: the right number was in the retrieved passages for 100% of tuning-set numeric questions and 91% on the held-out company.
 
-## What broke and how it was fixed
+### What broke and how it was fixed
 
 Every change was one hypothesis, measured with the full eval, and kept only if the number moved (`CHANGELOG-evals.md`).
 
@@ -55,7 +101,7 @@ Two lessons worth more than the numbers:
 - **Right number, wrong sentence.** The answer for Rapid7 operating income had the correct value but said "up from $35.0M" when it had *fallen*. The numeric grader passed it; the memo's claim check caught it. Grading only the extracted value misses errors in the prose around it.
 - **Structured data isn't automatically ground truth.** Companies tag the same line item differently in XBRL; the auto-built answer key needed checking against the documents too.
 
-## Results by run
+### Results by run
 
 | Run | Companies | Items | Accuracy | Citation support | Abstention P / R | Cost (answer) |
 |---|---|---|---|---|---|---|
@@ -68,7 +114,7 @@ Two lessons worth more than the numbers:
 
 Abstention P / R: of the times the agent said "not found", how often that was right / of the questions the filings don't answer, how many it caught. Models: Claude Sonnet 5 answers and writes memos; Claude Opus 5 grades. Total API spend for the whole project, including dead ends, was about $18.
 
-## What I'd do next
+### What I'd do next
 
 1. **Second-chance retrieval on "not found"**: when the model abstains, let it write its own search query and try again. Targets the one real weakness (3 of 4 held-out misses).
 2. **Answer prompt v2**: cite a quote for every fact in the answer (4 tuning answers were only partly supported), don't add unrequested comparisons, and answer "none/$0" when the filings show it instead of "not found".
@@ -76,39 +122,28 @@ Abstention P / R: of the times the agent said "not found", how often that was ri
 4. **Batch API for evals** (50% cheaper; evals don't need instant answers).
 5. **Embeddings** only if keyword search stops being enough, e.g. on filings with less standard vocabulary.
 
-## Local UI
+### CLI
 
-`./fr ui` opens a research-tool view at http://127.0.0.1:8787: each checklist answer beside the SEC filing, the quote highlighted in place, plus the IC memo with per-sentence sources, eval history, free keyword search over the filings, and a golden-set review screen.
-
-- **Private by construction:** it listens on 127.0.0.1 only, rejects requests whose Host isn't the app itself (which blocks DNS rebinding), and requires a custom header on every POST (which blocks cross-site requests).
-- **Cost-capped:** two paid actions, each with the cost shown first and a server-side daily cap: asking a question ($1/day, `UI_MAX_USD_PER_DAY`) and running a new company's checklist (about $1.10 each, $3/day, `RUN_MAX_USD_PER_DAY`). Evals stay CLI-only.
-- **Add any company:** search the SEC's list, check the company's filings can support the checklist, and run it (download, parse, index, 40 answers, memo) in two to three minutes. With no hand-built answer key, accuracy can't be fully scored; the numeric answers are checked against the SEC's XBRL data instead. First test: Workiva, 35 of 40 answered, 13 of 13 numbers matching SEC data, $1.08.
-- **Design:** built with [Impeccable](https://impeccable.style) and benchmarked against AlphaSense, Hebbia and S&P Capital IQ. An independent reviewer audited it against a written design contract over three rounds. DESIGN.md records the system.
-
-## Run it
-
-Needs [uv](https://docs.astral.sh/uv/) and an Anthropic API key. Fetching, parsing and indexing are free; only `ask`, `run`, `eval` and `memo` call the API (`FILINGROOM_MAX_USD` caps any single command, default $3).
+Fetching, parsing and indexing are free; `ask`, `run`, `eval` and `memo` call the API (`FILINGROOM_MAX_USD` caps any single command, default $3).
 
 ```
-cp .env.example .env         # add ANTHROPIC_API_KEY and your email for EDGAR's User-Agent
 ./fr build BILL              # fetch + parse + index
 ./fr ask BILL gov_activist   # one question (~$0.02)
 ./fr run BILL                # full checklist -> runs/BILL_<time>.md (~$1)
-./fr memo BILL               # IC memo from the latest run, with claim check (~$0.15)
+./fr memo BILL               # memo from the latest run, with claim check (~$0.15)
 ./fr eval --label my-change  # score the tuning set (~$2.40)
 ./fr retrieval               # free: is the right number in the retrieved passages?
-./fr ui                      # local web UI on 127.0.0.1:8787
-./fr add WK                  # free: add any SEC company (check, fetch, parse, index); then ./fr run WK (~$1)
 ```
 
 ## Layout
 
 ```
-checklist/checklist.json   40 questions, written from scratch
-golden/manual.jsonl        hand-built golden items with source quotes; golden/REVIEW.md to check them
-golden/golden.jsonl        generated: XBRL items + manual items
-prompts/                   answer, memo and judge prompts
-filingroom/                edgar, parse, index, answer, memo, evaluate, cli
-results/                   one file per eval run (committed)
-CHANGELOG-evals.md         one line per run: what changed, what moved
+web/                       the app (React + TypeScript); ./fr ui serves web/dist
+filingroom/                edgar, parse, index, answer, memo (engine); present, findings, financials, store, server (app)
+checklist/checklist.json   the 40 questions (39 shown in the app), with labels and groups
+prompts/                   answer, memo, judge and presentation prompts
+tests/                     stdlib unit tests for the app's pure functions
+golden/, results/          eval harness: golden answers and one file per eval run
+CHANGELOG-evals.md         one line per eval run: what changed, what moved
+docs/mockups/              approved visual mockups
 ```

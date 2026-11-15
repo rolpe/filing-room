@@ -4,67 +4,60 @@
 
 ## Platform
 
-web
+web (desktop; local only)
 
 ## Stack
 
-Delegated: plain HTML, CSS and JavaScript (ES modules) with no build step, served by the existing zero-dependency Python server (`./fr ui`, `filingroom/server.py`). The user is "fine with additional components as long as you don't go too crazy": a small vendored library is acceptable where it clearly earns its place; no frontend framework or npm toolchain.
+React + TypeScript + Vite in `web/`, with React Router and TanStack Query; hand-written CSS from one tokens file. No UI kit, no Tailwind, no chart library. Served as a static build by the project's stdlib Python server (`./fr ui`, `filingroom/server.py`), which also provides the JSON API.
 
 ## Users
 
-Primary: the project's author, who presents it in interviews. The UI's main job is **interview demos**: screen-sharing or a ~3-minute recording that walks someone through what the system does and why its answers can be trusted.
+Primary: deal-team associates and VPs on take-private teams, and public-equity analysts, doing a first look at a US-listed company: is there something here, and what would we need to diligence first?
 
-Audience watching those demos: a mix of finance / PE professionals (who care about the diligence content and whether they can trust it) and technical interviewers (who care about how it works and how it's measured).
-
-Secondary: the author's own review work (verifying golden answers, browsing results, asking the occasional question).
+They read SEC filings for a living, know what a 10-K, a proxy and a convertible note are, and don't trust a number until they've seen where it came from. They work on a laptop or a desktop monitor, often with a filing open in another window.
 
 ## Product Purpose
 
-filing-room answers a 40-question private-equity diligence checklist for a public company using only its SEC filings, backs every answer with a verbatim quote that code has verified against the filing, drafts an IC-style memo from those answers, and measures itself against a golden answer set that includes a company held out until the end. The UI makes that visible. Success: within a few minutes a viewer has seen an answer, the exact filing passage behind it, and the measured accuracy, including where it fails.
+filing-room is a screening tool. Add a company and, in a few minutes and for about $1.25 of model usage, it reads the latest two 10-Ks, four 10-Qs, proxy statement and earnings release from SEC EDGAR, and produces:
+
+- 39 findings in six groups (ownership and governance; capital structure and allocation; revenue and customers; profitability and cash flow; people; competition and risk), each a labelled fact with a value, a period and the filing quotes behind it;
+- five years of financials from the SEC's structured XBRL data;
+- a screening memo whose factual sentences cite findings;
+- a per-company Q&A thread for follow-up questions, answered only from the filings.
+
+Success: a user can go from "never looked at this company" to a defensible first view, and can check any statement in one click.
 
 ## Positioning
 
-The claim is verifiability and honest measurement, not model cleverness: every answer traces to a machine-verified quote with a link to sec.gov; "not found in the filings" is a first-class answer; and accuracy is measured, including a held-out company (Box: 89.7%) run once on a frozen system (git tag `frozen-for-holdout`).
+A first look you can check. Every finding is tied to quotes that code has string-matched against the filing, and the passage is one click away with the quote highlighted. What the filings don't disclose is said plainly. Findings that need a human look are marked To review, with the reason. It is a screening tool, not a diligence report or an investment recommendation.
 
 ## Operating Context
 
-Runs only on the author's Mac at `http://127.0.0.1:8787` (`./fr ui`), in a desktop browser, typically on a laptop screen and often screen-shared or recorded, so legibility at shared-screen resolution matters.
-
-Companies: BILL (June fiscal year; Starboard cooperation agreement), Rapid7 / RPD (December FY; JANA activist stake; CEO change June 1, 2026), Box (January FY; held-out company). Documents per company: two 10-Ks, four 10-Qs, the latest proxy (DEF 14A), the latest earnings-release 8-K, all from SEC EDGAR with links back to sec.gov.
+Runs on the user's own machine at `http://127.0.0.1:8787`. Coverage starts empty. Companies are any SEC registrant that files 10-Ks; foreign filers (20-F/40-F) and companies missing the needed filings are refused at the add step with the reason.
 
 ## Capabilities and Constraints
 
-Surfaces backed by the existing API (`filingroom/server.py`):
-- Companies overview: situation, fiscal year-end, filings loaded, eval score.
-- Checklist per company: 40 questions by category; answer, status (answered / not_found / unsupported), value, period, confidence; verified quotes with filing links; the eval's grade against the golden answer.
-- IC memo: sections of sentences, each citing checklist answers; sentences flagged by the claim check; open diligence questions.
-- Eval history: metrics across runs (accuracy, citation support, abstention, retrieval, cost), failures per run, memo claim checks.
-- Passage search (BM25, free): what retrieval returns for a query.
-- Golden-set review: each hand-drafted golden item with its quote; a verify toggle writes `"verified": "human"` to `golden/manual.jsonl`.
-- Ask: a live question to any company in the app (paid, ~$0.02–0.05).
-- Add a company: search any SEC-registered company, check its filings can support the checklist, then (after an explicit cost confirmation) download, parse, index, answer all 40 questions and write the memo, with a progress view. Paid, ~$1.10–1.20 per company, capped at $3/day (`RUN_MAX_USD_PER_DAY`) and $2.50 per run. Added companies have no hand-built answer key: their numeric answers are checked automatically against the SEC's XBRL data ("SEC check"), text answers are not graded, and they never enter evals.
+Screens: Coverage (home) with find-or-add; company workspace with Overview, Findings, Screening memo, Q&A and Filings tabs; Usage.
 
-Constraints:
-- Local only: loopback bind, Host-header check, custom header required on POSTs.
-- Ask is the only paid action, capped server-side at $1/day (`UI_MAX_USD_PER_DAY`); the UI must make cost explicit before and after. No UI path may trigger full checklist runs or evals.
-- Box was tested once and its recorded test run is what its Checklist shows; Ask is open for all three companies and never changes recorded runs. Re-running Box's checklist or eval stays behind the CLI's `--final` flag.
-- UI copy avoids ML jargon such as "held-out": say "tuned on BILL and Rapid7, then tested once on Box" (user decision, 2026-09-27). The term stays in README and technical write-ups.
-- Terminology to keep: checklist, golden set, quote / citation, verified, not found, unsupported, eval run, fiscal period labels like FY2026 and Q2 FY2027.
+- Findings have three statuses: Verified, To review, Not disclosed. Users can add notes, flag a finding for review, and mark a To review finding as reviewed after checking it.
+- Exports: findings as CSV with source URLs; memo as Markdown; memo print stylesheet.
+- Paid actions: screening a company (about $1.25; $2.50 hard stop per company; $3/day cap) and asking a question (up to $0.05; $1/day cap). The cost is shown before the action and confirmed in the request; the actual cost is shown after. One screening runs at a time; an interrupted one resumes without paying again for answers already produced.
+- Local only: loopback bind, Host-header check, custom header on POSTs.
 
 ## Brand Commitments
 
-Name: filing-room (lowercase). Voice: plain, precise, and honest about limits: failures and flagged sentences are shown, not hidden. No logo or other brand assets exist.
+Name: filing-room (lowercase). Voice: plain, precise, unhedged; say what the filings show and what they don't. No tutorial paragraphs, no marketing tone, no jargon about how the tool was evaluated.
 
-Standing preference (user, direction round 2026-09-27): substance and clearly laid-out information over clever visual design; nothing "cute". The UI follows the conventional grammar of front-office research tools and should sit credibly alongside AlphaSense, Hebbia and S&P Capital IQ, whose craft level is the quality bar.
+Standing preference: substance and clearly laid-out information over clever design; nothing cute. The quality bar is AlphaSense, Hebbia and S&P Capital IQ.
 
 ## Evidence on Hand
 
-Real outputs in the repo: `results/*.json` (six eval runs and memo claim checks), `runs/` (checklists and memos for BILL and RPD; Box answers come from its holdout eval), `golden/manual.jsonl` (84 hand-drafted items, mostly unverified "claude-draft"), `CHANGELOG-evals.md`, and the README results tables. Everything the UI shows must come from these files through the API. There are no users, testimonials, or benchmarks beyond them, and none may be invented.
+Everything shown comes from SEC EDGAR filings, SEC XBRL company facts, and the model's answers to the checklist with their verified quotes. There are no testimonials, ratings or benchmarks to show in the app; none may be invented.
 
 ## Product Principles
 
 1. Every claim is one click from its source passage.
-2. Show the measurement, including failures and weaknesses.
-3. Explain as you go: part of the audience doesn't know what a 10-K or an eval is.
-4. Spending money is always explicit.
+2. Say what's not disclosed, and what needs review, as plainly as what's verified.
+3. Spending money is always explicit: cost before, cost after, capped per day.
+4. Dense and calm: tables, tabular numerals, one accent for highlighted filing text.
 5. Local and private by construction.
