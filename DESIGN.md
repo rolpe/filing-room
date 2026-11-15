@@ -98,6 +98,9 @@ Same frame, tokens and components; sits under a "Developer" group in the rail an
 - **Run tables** (`table.plain.ev-runs`): label in weight 650 with date and note beneath in 12px muted; ticker chips; metrics right-aligned; the pass-bar column uses the status pattern (Meets / Misses: which). The held-out run's row sits on `panel` with an ink "Held out" chip.
 - **Metrics strip** (`.ev-metrics`): a ruled grid of label, 17px value and a one-line plain definition.
 - **Graded items** reuse the findings table and the detail panel: expected answer with the golden quote in a serif `panel` block (`.ev-quote`), the answer, the verdict (Correct / Wrong / Not graded with check, x and dash icons), the judge's reason, and the citations opening the same passage viewer, fed from the eval corpus.
+- **Trust headline** (`.ev-trust`): a bordered block above the metrics with three plain sentences in 14px, each count in weight 650 followed by its percentage and interval, and a one-line note on what the status rules include.
+- **Intervals**: every rate shows its 95% range as a small muted line (`.ci`) under or beside the figure; the trend draws them as vertical bars.
+- **Answer-key review** (Golden set): a progress bar with "n of 84 checked", status filters, and rows that open the detail panel with the expected answer, the check state (Checked / Not checked / Needs fixing / From SEC data, using the status pattern; a needs-fix note on `warn-wash`), "Mark as checked", "Needs fixing…" with a short note, Undo, and the source quote highlighted in the passage viewer.
 - **Run form** (`.ev-form`): fieldsets for companies (the held-out company shown disabled with its reason), scope (spot check with an item picker, or full set), label and note; a cost row with the estimate, today's budget and the per-run stop beside one primary button naming the cost; live progress uses the standard progress bar.
 
 ## Responsive

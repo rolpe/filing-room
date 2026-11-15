@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { evalApi, runDate, type EvalSummary } from "../../lib/evalApi";
 import { money } from "../../lib/format";
 import { ErrorState, Notice, SkeletonRows } from "../../components/States";
-import { Companies, JobProgress, PassBar, pctv } from "./common";
+import { Companies, JobProgress, PassBar, RateCell, pctv } from "./common";
 
 export function EvalRunsPage() {
   const q = useQuery({ queryKey: ["evals"], queryFn: evalApi.overview,
@@ -21,7 +21,7 @@ export function EvalRunsPage() {
         <section>
           <div className="sec-head">
             <h2>Accuracy across runs</h2>
-            <span className="muted">Pass bar set before building: accuracy ≥ {bar.accuracy.value}% · citation support ≥ {bar.citation_support_rate.value}% · unsupported claims ≤ {bar.unsupported_claim_rate.value}%</span>
+            <span className="muted">Bars show 95% intervals · pass bar set before building: accuracy ≥ {bar.accuracy.value}% · citation support ≥ {bar.citation_support_rate.value}% · unsupported claims ≤ {bar.unsupported_claim_rate.value}%</span>
           </div>
           <Trend runs={[...d.runs].reverse()} bar={bar.accuracy.value} />
         </section>
@@ -67,9 +67,12 @@ function RunTable({ runs }: { runs: EvalSummary[] }) {
       <table className="plain ev-runs">
         <thead>
           <tr>
-            <th>Run</th><th>Companies</th><th className="num">Items</th><th className="num">Accuracy</th>
-            <th className="num">Cite support</th><th className="num">Unsupported</th><th className="num">Abstain P / R</th>
-            <th className="num">Retrieval</th><th className="num">Cost</th><th>Pass bar</th>
+            <th>Run</th><th>Companies</th><th className="num">Items</th>
+            <th className="num" title="Of the answers the app would mark Verified, the share that were wrong">Verified but wrong</th>
+            <th className="num">Accuracy</th><th className="num">Cite support</th><th className="num">Unsupported</th>
+            <th className="num">Abstain P / R</th><th className="num">Retrieval</th>
+            <th className="num" title="Graded items whose answer key a person has checked">Key checked</th>
+            <th className="num">Cost</th><th>Pass bar</th>
           </tr>
         </thead>
         <tbody>
@@ -81,11 +84,14 @@ function RunTable({ runs }: { runs: EvalSummary[] }) {
               </td>
               <td><Companies r={r} /></td>
               <td className="num">{r.n_items}</td>
-              <td className="num"><b>{pctv(r.metrics.accuracy)}</b></td>
-              <td className="num">{pctv(r.metrics.citation_support_rate)}</td>
-              <td className="num">{pctv(r.metrics.unsupported_claim_rate)}</td>
-              <td className="num">{pctv(r.metrics.abstention_precision)} / {pctv(r.metrics.abstention_recall)}</td>
-              <td className="num">{pctv(r.metrics.retrieval_recall)}</td>
+              <td className="num"><b>{r.trust.verified_wrong.k} of {r.trust.verified_wrong.n}</b><span className="ci">{r.trust.verified_wrong.ci ? `${Math.round(r.trust.verified_wrong.ci[0])}–${Math.round(r.trust.verified_wrong.ci[1])}%` : ""}</span></td>
+              <td className="num"><RateCell r={r.rates.accuracy} bold /></td>
+              <td className="num"><RateCell r={r.rates.citation_support_rate} /></td>
+              <td className="num"><RateCell r={r.rates.unsupported_claim_rate} /></td>
+              <td className="num">{pctv(r.rates.abstention_precision.pct)} / {pctv(r.rates.abstention_recall.pct)}
+                <span className="ci">{r.rates.abstention_precision.k} of {r.rates.abstention_precision.n} · {r.rates.abstention_recall.k} of {r.rates.abstention_recall.n}</span></td>
+              <td className="num"><RateCell r={r.rates.retrieval_recall} /></td>
+              <td className="num">{r.key.checked.k} of {r.key.checked.n}</td>
               <td className="num">{money(r.cost_usd)}</td>
               <td><PassBar r={r} compact /></td>
             </tr>
@@ -101,11 +107,11 @@ function Trend({ runs, bar }: { runs: EvalSummary[]; bar: number }) {
   const pts = runs.filter((r) => r.metrics.accuracy !== null);
   if (pts.length < 2) return <p className="muted">The trend appears once there are two recorded runs.</p>;
   const W = 760, H = 190, L = 56, R = 56, T = 18, B = 48;
-  const lo = Math.min(80, ...pts.map((r) => r.metrics.accuracy!)) - 2;
+  const lo = Math.max(50, Math.floor(Math.min(80, ...pts.map((r) => r.rates.accuracy.ci?.[0] ?? r.metrics.accuracy!)) / 5) * 5);
   const hi = 100;
   const x = (i: number) => L + (i * (W - L - R)) / (pts.length - 1);
   const y = (v: number) => T + ((hi - v) * (H - T - B)) / (hi - lo);
-  const ticks = [lo + 2, 85, 90, 95, 100].filter((v, i, a) => a.indexOf(v) === i && v >= lo && v <= hi);
+  const ticks = [lo, 70, 80, 85, 90, 100].filter((v, i, a) => a.indexOf(v) === i && v >= lo && v <= hi);
   const path = pts.map((r, i) => `${i ? "L" : "M"}${x(i)},${y(r.metrics.accuracy!)}`).join(" ");
   return (
     <figure className="ev-trend">
@@ -120,10 +126,11 @@ function Trend({ runs, bar }: { runs: EvalSummary[]; bar: number }) {
         <path d={path} className="line" />
         {pts.map((r, i) => (
           <g key={r.name}>
+            {r.rates.accuracy.ci && <line x1={x(i)} x2={x(i)} y1={y(Math.max(lo, r.rates.accuracy.ci[0]))} y2={y(r.rates.accuracy.ci[1])} className="err" />}
             <circle cx={x(i)} cy={y(r.metrics.accuracy!)} r={r.holdout ? 5.5 : 4} className={r.holdout ? "pt holdout" : "pt"}>
-              <title>{`${r.label}: ${r.metrics.accuracy}% on ${r.n_items} items (${r.tickers.join(", ")})`}</title>
+              <title>{`${r.label}: ${r.metrics.accuracy}% on ${r.rates.accuracy.n} graded items (${r.tickers.join(", ")}); 95% interval ${r.rates.accuracy.ci?.join("–")}%`}</title>
             </circle>
-            <text x={x(i)} y={y(r.metrics.accuracy!) - 10} className="val" textAnchor="middle">{r.metrics.accuracy}%</text>
+            <text x={x(i) + 8} y={y(r.metrics.accuracy!) + 4} className="val" textAnchor="start">{r.metrics.accuracy}%</text>
             <text x={x(i)} y={H - B + 18} className="axis" textAnchor="middle">{r.label}</text>
             <text x={x(i)} y={H - B + 32} className="axis faint" textAnchor="middle">{r.holdout ? `held out · ${r.n_items}` : `${r.tickers.join("+")} · ${r.n_items}`}</text>
           </g>

@@ -714,6 +714,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(devtools.config_view())
         if r == ["golden"]:
             return self._json(devtools.golden_view())
+        if len(r) == 2 and r[0] == "golden":
+            return self._json(devtools.golden_item(r[1]))
+        if len(r) == 3 and r[0] == "golden" and r[2] == "passage":
+            return self._json(devtools.golden_passage(r[1], arg("chunk")))
         if r == ["job"]:
             return self._json({"job": devtools.job_view(), "spend": devtools.spend_view()})
         if len(r) == 3 and r[0] == "runs":
@@ -735,6 +739,8 @@ class Handler(BaseHTTPRequestHandler):
             if _busy_ticker():
                 raise Busy(_screening_busy_message())
             return self._json(devtools.start(spec, float(body.get("confirm_usd") or 0)))
+        if len(r) == 3 and r[0] == "golden" and r[2] == "review":
+            return self._json(devtools.review(r[1], str(body.get("action", "")), str(body.get("note", ""))))
         if r == ["retrieval"]:
             tickers = body.get("tickers") if isinstance(body.get("tickers"), list) else []
             return self._json(devtools.retrieval([str(t) for t in tickers]))

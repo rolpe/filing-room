@@ -15,7 +15,7 @@ import threading
 from datetime import date, datetime
 from pathlib import Path
 
-from . import answer, checklist, config, evaljob, evaluate, findings, golden, store
+from . import answer, checklist, config, evaljob, evalstats, evaluate, findings, golden, store
 
 def switch_on(value: str | None) -> bool:
     """FILINGROOM_DEV_TOOLS: on unless set to 0, false, off or no."""
@@ -157,9 +157,21 @@ def expected_text(expected: dict) -> str:
 
 # ---------------------------------------------------------------- views
 
+def _docs_by_ticker(tickers: list[str]) -> dict[str, dict]:
+    return {t: _eval_docs(t) for t in tickers}
+
+
 def _summary(kind: str, name: str, r: dict) -> dict:
     m = r["metrics"]
-    return {"kind": kind, "name": name, "label": r.get("label", ""), "note": r.get("note", ""),
+    gold = _golden_by_id()
+    status = review_status()
+    tr = evalstats.trust(r["rows"], gold, _docs_by_ticker(r["tickers"]))
+    tr.pop("statuses")
+    key = evalstats.checked_share(r["rows"], status)
+    key["from_sec"] = sum(1 for x in r["rows"] if x.get("correct") is not None
+                          and (gold.get(x["id"], {}).get("source") or {}).get("method") in ("xbrl", "derived")
+                          and status.get(x["id"]) != "human")
+    return {"kind": kind, "name": name, "rates": evalstats.counts(r["rows"]), "trust": tr, "key": key, "label": r.get("label", ""), "note": r.get("note", ""),
             "timestamp": r.get("timestamp", name[:15]), "tickers": r["tickers"], "n_items": len(r["rows"]),
             "holdout": bool(set(r["tickers"]) & holdout_tickers()),
             "model": r.get("model"), "effort": r.get("effort"), "k": r.get("k"), "expand": r.get("expand", 0),
@@ -216,9 +228,18 @@ def detail(kind: str, name: str) -> dict:
              "answer": x.get("answer", ""), "expected": expected_text(x.get("expected") or {}),
              "value_in_context": x.get("value_in_context"), "flipped": x["id"] in flipped,
              "before": flipped.get(x["id"])} for x in r["rows"]]
+    better = sum(1 for f in fl if f["after"] and not f["before"])
+    worse = sum(1 for f in fl if f["before"] and not f["after"])
+    status = review_status()
+    app = evalstats.trust(r["rows"], _golden_by_id(), _docs_by_ticker(r["tickers"]))["statuses"]
+    for row in rows:
+        row["app_status"] = app.get(row["id"])
+        row["key"] = status.get(row["id"], "")
     return {**_summary(kind, name, r),
             "prev": _summary("results", prev[0], prev[1]) if prev else None,
             "flips": [{**f, "label": labels.get(f["id"].split(":", 1)[-1], f["id"])} for f in fl],
+            "flip_test": {"better": better, "worse": worse, "p": round(evalstats.sign_test(better, worse), 4),
+                          "statement": evalstats.flip_statement(better, worse)} if prev else None,
             "rows": rows}
 
 
@@ -313,15 +334,120 @@ def passage(kind: str, name: str, item_id: str, chunk_id: str) -> dict:
 def golden_view() -> dict:
     labels = _labels()
     items = list(_golden_by_id().values())
+    manual = _manual_items()
     cos = _companies()
     out = []
     for t in sorted({i["ticker"] for i in items}, key=lambda t: (cos.get(t, {}).get("split") != "tune", t)):
-        rows = [{"id": i["id"], "qid": i["qid"], "label": labels.get(i["qid"], i["qid"]), "grade": i["grade"],
-                 "expected": expected_text(i.get("expected") or {}), "source": _golden_source(i)}
-                for i in items if i["ticker"] == t]
+        rows = []
+        for i in items:
+            if i["ticker"] != t:
+                continue
+            m = manual.get(i["id"])
+            rows.append({"id": i["id"], "qid": i["qid"], "label": labels.get(i["qid"], i["qid"]), "grade": i["grade"],
+                         "expected": expected_text(i.get("expected") or {}), "source": _golden_source(i),
+                         "review": m.get("verified", "claude-draft") if m else "sec-data",
+                         "review_note": (m or {}).get("review_note", "")})
         out.append({"ticker": t, "name": cos.get(t, {}).get("name", t), "holdout": t in holdout_tickers(),
                     "items": rows})
-    return {"companies": out, "total": len(items)}
+    status = [m.get("verified") for m in manual.values()]
+    return {"companies": out, "total": len(items),
+            "progress": {"manual": len(manual), "checked": status.count("human"), "needs_fix": status.count("needs-fix"),
+                         "from_sec": len(items) - len(manual)}}
+
+
+# ---------------------------------------------------------------- answer-key review (golden/manual.jsonl)
+
+REVIEW_STATES = {"checked": "human", "needs_fix": "needs-fix", "undo": "claude-draft"}
+
+
+def _manual_items() -> dict[str, dict]:
+    if not golden.MANUAL.exists():
+        return {}
+    return {o["id"]: o for o in (json.loads(l) for l in golden.MANUAL.read_text().splitlines()
+                                 if l.strip() and not l.startswith("//"))}
+
+
+def review_status() -> dict[str, str]:
+    """Current check state per golden id: human / claude-draft / needs-fix for hand-built items, sec-data otherwise."""
+    return {i: m.get("verified", "claude-draft") for i, m in _manual_items().items()}
+
+
+def edit_manual_line(text: str, item_id: str, verified: str, note: str | None) -> str:
+    """Return manual.jsonl with only one item's `verified` (and `review_note`) changed. Every other line, comment and
+    blank is kept byte for byte; the edited line keeps its key order (review_note goes last when added)."""
+    out, found = [], False
+    for line in text.split("\n"):
+        if line.strip() and not line.startswith("//"):
+            obj = json.loads(line)
+            if obj.get("id") == item_id:
+                found = True
+                obj["verified"] = verified
+                if note:
+                    obj["review_note"] = note
+                else:
+                    obj.pop("review_note", None)
+                line = json.dumps(obj, ensure_ascii=False)
+        out.append(line)
+    if not found:
+        raise KeyError(item_id)
+    return "\n".join(out)
+
+
+def review(item_id: str, action: str, note: str = "") -> dict:
+    """Mark a hand-built answer-key item as checked, as needing a fix (with a note), or undo. Writes in place."""
+    if action not in REVIEW_STATES:
+        raise ValueError("Unknown review action.")
+    note = " ".join(str(note or "").split())[:300]
+    if action == "needs_fix" and not note:
+        raise ValueError("Say what needs fixing.")
+    with _lock:
+        text = golden.MANUAL.read_text()
+        new = edit_manual_line(text, item_id, REVIEW_STATES[action], note if action == "needs_fix" else None)
+        tmp = golden.MANUAL.with_name(f".{golden.MANUAL.name}.tmp")
+        tmp.write_text(new)
+        os.replace(tmp, golden.MANUAL)
+    return golden_item(item_id)
+
+
+def _locate(doc_id: str, quote: str, ticker: str) -> str | None:
+    """The eval-corpus chunk where a golden quote appears, if any."""
+    for cid, c in _eval_index(ticker).items():
+        if c["doc_id"] == doc_id and findings.quote_spans(c["text"], quote):
+            return cid
+    return None
+
+
+def golden_item(item_id: str) -> dict:
+    g = _golden_by_id().get(item_id)
+    if not g:
+        raise KeyError(item_id)
+    m = _manual_items().get(item_id)
+    q = checklist.by_id().get(g["qid"], {})
+    src = _golden_source(g)
+    quotes = [{"n": i + 1, "doc_id": x["doc_id"], "quote": x["quote"], "chunk_id": _locate(x["doc_id"], x["quote"], g["ticker"]),
+               **{k: v for k, v in findings.doc_info(x["doc_id"], _eval_docs(g["ticker"])).items() if k in ("form", "period", "url")}}
+              for i, x in enumerate(src["quotes"] if src else [])]
+    return {"id": item_id, "ticker": g["ticker"], "qid": g["qid"], "label": q.get("label", g["qid"]),
+            "question": q.get("question", ""), "grade": g["grade"], "expected": expected_text(g.get("expected") or {}),
+            "source": src, "quotes": quotes, "note": g.get("note", ""),
+            "review": m.get("verified", "claude-draft") if m else "sec-data", "review_note": (m or {}).get("review_note", ""),
+            "editable": m is not None}
+
+
+def golden_passage(item_id: str, chunk_id: str) -> dict:
+    g = golden_item(item_id)
+    quotes = [(x["n"], x["quote"]) for x in g["quotes"] if x["chunk_id"] == chunk_id]
+    c = _eval_index(g["ticker"]).get(chunk_id)
+    if not c or not quotes:
+        raise KeyError(chunk_id)
+    p = findings.passage(c, quotes)
+    prev_id, next_id = _step(chunk_id, -1), _step(chunk_id, 1)
+    ix = _eval_index(g["ticker"])
+    heading = c["heading"] if c["heading"] not in ("proxy", "press_release") else ""
+    return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "subheading", "url")},
+            "heading": heading, "form_label": findings.FORM_LABELS.get(c["form"], c["form"]), **p,
+            "quotes_here": [n for n, _ in quotes], "prev_chunk": prev_id if prev_id in ix else None,
+            "next_chunk": next_id if next_id in ix else None, "missing": False}
 
 
 # ---------------------------------------------------------------- spend + jobs

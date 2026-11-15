@@ -1,4 +1,4 @@
-import type { EvalJob, EvalMetrics, EvalSummary } from "../../lib/evalApi";
+import { ciText, type EvalJob, type EvalSummary, type Rate } from "../../lib/evalApi";
 import { money } from "../../lib/format";
 import { Icon } from "../../components/Icons";
 
@@ -25,20 +25,57 @@ export function PassBar({ r, compact = false }: { r: EvalSummary; compact?: bool
   return <span className="status warn" title={`Below the bar on ${miss}`}><Icon name="flag" />Misses: {miss}</span>;
 }
 
-export function MetricsList({ m, byGrade, cost, seconds }: {
-  m: EvalMetrics; byGrade: Record<string, { n: number; accuracy: number | null }>; cost: number; seconds: number | null;
-}) {
+/** A rate with its 95% interval underneath. */
+export function RateCell({ r, bold = false }: { r: Rate; bold?: boolean }) {
+  const v = r.pct === null ? "–" : `${r.pct.toFixed(1)}%`;
+  return <>{bold ? <b>{v}</b> : v}{r.ci && <span className="ci">{ciText(r)}</span>}</>;
+}
+
+export function MetricsList({ s }: { s: EvalSummary }) {
+  const r = s.rates;
+  const one = (label: string, rate: Rate, note: string) => (
+    <div><dt>{label}</dt><dd>{rate.pct === null ? "–" : `${rate.pct.toFixed(1)}%`}{rate.ci && <span className="ci">{ciText(rate)}</span>}</dd>
+      <dd className="sub">{rate.k} of {rate.n} · {note}</dd></div>
+  );
   return (
     <dl className="ev-metrics">
-      <div><dt>Accuracy</dt><dd>{pctv(m.accuracy)}</dd>
-        <dd className="sub">{Object.entries(byGrade).filter(([, v]) => v.n).map(([g, v]) => `${g} ${pctv(v.accuracy)} (${v.n})`).join(" · ")}</dd></div>
-      <div><dt>Citation support</dt><dd>{pctv(m.citation_support_rate)}</dd><dd className="sub">judge: verified quotes back the answer</dd></div>
-      <div><dt>Unsupported claims</dt><dd>{pctv(m.unsupported_claim_rate)}</dd><dd className="sub">answers with no supporting quote</dd></div>
-      <div><dt>Abstention P / R</dt><dd>{pctv(m.abstention_precision)} / {pctv(m.abstention_recall)}</dd>
-        <dd className="sub">{m.false_abstentions ?? 0} said "not found" wrongly</dd></div>
-      <div><dt>Retrieval recall</dt><dd>{pctv(m.retrieval_recall)}</dd><dd className="sub">golden number in the passages read</dd></div>
-      <div><dt>Cost</dt><dd>{money(cost)}</dd><dd className="sub">{seconds ? `${Math.round(seconds)} s` : ""}</dd></div>
+      {one("Accuracy", r.accuracy, Object.entries(s.by_grade).filter(([, v]) => v.n).map(([g, v]) => `${g} ${pctv(v.accuracy)}`).join(", "))}
+      {one("Citation support", r.citation_support_rate, "verified quotes back the answer")}
+      {one("Unsupported claims", r.unsupported_claim_rate, "answers with no supporting quote")}
+      {one("Abstention precision", r.abstention_precision, "\"not found\" was right")}
+      {one("Abstention recall", r.abstention_recall, "unanswerable items caught")}
+      {one("Retrieval recall", r.retrieval_recall, "golden number in the passages read")}
+      <div><dt>Cost</dt><dd>{money(s.cost_usd)}</dd><dd className="sub">{s.wall_seconds ? `${Math.round(s.wall_seconds)} s` : ""}</dd></div>
     </dl>
+  );
+}
+
+/** The headline: how far the app's own Verified / To review / Not disclosed statuses can be trusted. */
+export function TrustBlock({ s }: { s: EvalSummary }) {
+  const t = s.trust;
+  const w = t.wrong_by_status;
+  const pct = (r: Rate) => (r.pct === null ? "" : ` (${r.pct.toFixed(1)}%, ${ciText(r)})`);
+  return (
+    <section className="ev-trust" aria-labelledby="trust-h">
+      <h2 id="trust-h">Can the app's statuses be trusted?</h2>
+      <ul>
+        <li><b>{t.verified_wrong.k} of {t.verified_wrong.n}</b> answers the app would mark Verified were wrong{pct(t.verified_wrong)}.</li>
+        <li><b>{t.wrong_caught.k} of {t.wrong_caught.n}</b> wrong answers would be marked To review{pct(t.wrong_caught)}
+          {t.wrong_caught.n > 0 && <span className="muted">; of the rest, {w.verified} would show as Verified and {w.not_disclosed} as Not disclosed</span>}.</li>
+        <li><b>{t.false_not_found.k} of {t.false_not_found.n}</b> items the filings do answer came back Not disclosed{pct(t.false_not_found)}.</li>
+      </ul>
+      <p className="muted small">Uses the app's own status rules on each graded answer. The SEC number check counts only where the answer key is the SEC figure; reviews and flags don't apply. Judgment-only items are left out of correctness.</p>
+    </section>
+  );
+}
+
+export function KeyLine({ s }: { s: EvalSummary }) {
+  const k = s.key;
+  return (
+    <p className="muted small ev-keyline">
+      Answer key checked by hand for {k.checked.k} of {k.checked.n} graded items{k.from_sec ? `; ${k.from_sec} more come from SEC data` : ""}.
+      {k.accuracy_checked.n > 0 && <> On checked items only: accuracy <b>{k.accuracy_checked.pct?.toFixed(1)}%</b> ({k.accuracy_checked.k} of {k.accuracy_checked.n}, {ciText(k.accuracy_checked)}).</>}
+    </p>
   );
 }
 

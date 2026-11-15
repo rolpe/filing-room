@@ -7,7 +7,8 @@ import { periodText } from "../../lib/format";
 import { Icon } from "../../components/Icons";
 import { PassageView, type PassageLoader } from "../../components/PassageView";
 import { ErrorState, Skeleton, SkeletonRows } from "../../components/States";
-import { Companies, MetricsList, PassBar, Verdict } from "./common";
+import { Companies, KeyLine, MetricsList, PassBar, TrustBlock, Verdict } from "./common";
+import { StatusBadge } from "../../components/Status";
 import "../../styles/findings.css";
 
 type Show = "all" | "failed" | "flipped";
@@ -54,14 +55,17 @@ export function EvalRunPage() {
             <PassBar r={d} />
           </div>
           <p className="meta">{runDate(d.timestamp)} · {d.n_items} items · answers {d.model} (effort {d.effort}, k={d.k}, expand={d.expand}) · judge {d.judge_model ?? "none"}{d.note ? ` · ${d.note}` : ""}</p>
-          <MetricsList m={d.metrics} byGrade={d.by_grade} cost={d.cost_usd} seconds={d.wall_seconds} />
+          <TrustBlock s={d} />
+          <MetricsList s={d} />
+          <KeyLine s={d} />
 
           <div className="sec-head" style={{ marginTop: 22 }}>
             <h2>What changed</h2>
             {d.prev ? <span className="muted">against <Link className="link" to={`/evals/runs/results/${d.prev.name}`}>{d.prev.label || d.prev.name}</Link>, the previous run on {d.prev.tickers.join(" and ")}</span>
               : <span className="muted">No earlier run on the same companies</span>}
           </div>
-          {d.prev && (d.flips.length === 0 ? <p className="muted">No item changed its grade.</p> : (
+          {d.flip_test && <p className="ev-flipline">{d.flip_test.statement}</p>}
+          {d.prev && (d.flips.length === 0 ? null : (
             <ul className="ev-flips">
               {d.flips.map((f) => (
                 <li key={f.id}><button type="button" className="src-link" onClick={() => select(f.id)}>{f.id.split(":")[0]} · {f.label}</button>
@@ -84,10 +88,10 @@ export function EvalRunPage() {
             </div>
           </div>
           <table className="find ev-items">
-            <thead><tr><th>Item</th><th>Grade</th><th>Expected</th><th>Result</th></tr></thead>
+            <thead><tr><th>Item</th><th>Grade</th><th>Expected</th><th>App would show</th><th>Result</th></tr></thead>
             <tbody>
               {rows.map((r) => <ItemRow key={r.id} r={r} selected={r.id === sel} onSelect={() => select(r.id)} />)}
-              {rows.length === 0 && <tr><td colSpan={4} className="muted">No items match these filters.</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={5} className="muted">No items match these filters.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -102,7 +106,8 @@ function ItemRow({ r, selected, onSelect }: { r: EvalRow; selected: boolean; onS
     <tr aria-selected={selected} onClick={onSelect}>
       <td className="what"><span className="label">{r.label}</span><span className="gist">{r.ticker} · {r.status.replace("_", " ")}{r.flipped ? ` · changed (was ${r.before ? "correct" : "wrong"})` : ""}</span></td>
       <td className="src">{r.grade}</td>
-      <td className="src ev-exp" title={r.expected}>{r.expected}</td>
+      <td className="src ev-exp" title={r.expected}>{r.expected}{r.key === "human" && <span className="gist">key checked</span>}</td>
+      <td className="st">{r.app_status ? <StatusBadge status={r.app_status} /> : <span className="status none">–</span>}</td>
       <td className="st">
         <Verdict correct={r.correct} />
         {r.supported && r.supported !== "yes" && <span className="gist">support: {r.supported}</span>}
