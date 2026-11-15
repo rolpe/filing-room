@@ -2,8 +2,10 @@
 quotes into a short gist and 1-5 cited points. It never changes the answer and adds no facts:
 
   - the model sees only the answer and the quotes already verified against the filing;
-  - a mechanical guard rejects any output with a new number, a cite to a quote it wasn't given, or bad lengths;
-  - anything rejected or failed falls back to plain text built from the answer (`fallback`).
+  - small problems are repaired without adding anything (too many points, a stray cite, an over-long gist);
+  - a mechanical guard rejects any output with a new number, a cite to a quote it wasn't given, or bad lengths,
+    and the call is retried once with the broken rule named;
+  - anything still rejected falls back to plain text built from the answer (`fallback`).
 
 The answering prompt and pipeline are untouched; this runs after them, on their output.
 """
@@ -66,12 +68,36 @@ def _haystack(row: dict) -> str:
     return " ".join(parts).replace(",", "")
 
 
+def repair(out: dict, row: dict) -> tuple[dict, list[str]]:
+    """Fix what can be fixed without adding anything: trim to 5 points, drop cites to quotes the model wasn't
+    given (when a valid cite remains), and swap an over-long gist for the answer's first sentence.
+    Returns the repaired output (gist_fallback=True when the gist was swapped) and what was repaired."""
+    out = {**out, "points": [dict(p) for p in (out.get("points") or [])]}
+    done = []
+    if len(out["points"]) > MAX_POINTS:
+        out["points"] = out["points"][:MAX_POINTS]
+        done.append("kept the first 5 points")
+    allowed = {n for n, _ in verified_quotes(row)}
+    for p in out["points"]:
+        cites = p.get("cites") or []
+        good = [c for c in cites if c in allowed]
+        if good and len(good) < len(cites):
+            p["cites"] = good
+            done.append("dropped a cite to a quote it wasn't given")
+    gist = (out.get("gist") or "").strip()
+    if gist and len(gist.split()) > MAX_GIST_WORDS:
+        out["gist"] = fallback(row)["gist"]
+        out["gist_fallback"] = True
+        done.append("used the answer's first sentence as the gist")
+    return out, done
+
+
 def guard(out: dict, row: dict, want_label: bool) -> str | None:
-    """Why this output can't be shown, or None if it passes."""
+    """Why this output can't be shown, or None if it passes. A gist taken from the answer skips the length rule."""
     gist = (out.get("gist") or "").strip()
     points = out.get("points") or []
     label = (out.get("value_label") or "").strip() if want_label else ""
-    if not gist or len(gist.split()) > MAX_GIST_WORDS:
+    if not gist or (len(gist.split()) > MAX_GIST_WORDS and not out.get("gist_fallback")):
         return "gist missing or too long"
     if not 1 <= len(points) <= MAX_POINTS:
         return "wrong number of points"
@@ -122,21 +148,33 @@ def clean(out: dict, want_label: bool) -> dict:
 # ---------------------------------------------------------------- calls
 
 def present_one(q: dict, row: dict, meter: llm.CostMeter, complete=llm.complete_json) -> dict:
-    """Presentation for one finding; {"presented": False, ...} with a reason when it fell back."""
+    """Presentation for one finding: call, repair, check; on a failed check retry once with the broken rule named;
+    {"presented": False, ...} with a reason when that fails too. Records repairs and whether it retried."""
     if not eligible(row):
         return {**fallback(row), "reason": "not answered with a verified quote"}
     want_label = q.get("answer_type") not in NUMERIC_TYPES
-    try:
-        out = complete(MODEL, answer.load_prompt("present.md"), build_user(q, row), _schema(want_label), meter,
-                       effort=EFFORT, max_tokens=4000)
-    except llm.LLMError as e:
-        return {**fallback(row), "reason": str(e)}
-    except SystemExit:
-        raise  # spend limits stop the whole job
-    except Exception as e:  # network or API errors: show the plain answer instead
-        return {**fallback(row), "reason": f"{e.__class__.__name__}: {e}"[:200]}
-    why = guard(out, row, want_label)
-    return {**fallback(row), "reason": why} if why else clean(out, want_label)
+    user = build_user(q, row)
+    repairs: list[str] = []
+    why = None
+    for attempt in range(2):
+        msg = user if attempt == 0 else (
+            f"{user}\n\nYour previous output broke this rule: {why}. Return the whole JSON again and follow every rule.")
+        try:
+            out = complete(MODEL, answer.load_prompt("present.md"), msg, _schema(want_label), meter,
+                           effort=EFFORT, max_tokens=4000)
+        except llm.LLMError as e:
+            why = str(e)
+            continue
+        except SystemExit:
+            raise  # spend limits stop the whole job
+        except Exception as e:  # network or API errors: show the plain answer instead
+            return {**fallback(row), "reason": f"{e.__class__.__name__}: {e}"[:200], "retried": attempt > 0}
+        out, done = repair(out, row)
+        why = guard(out, row, want_label)
+        if not why:
+            return {**clean(out, want_label), "repairs": done, "retried": attempt > 0}
+        repairs = done
+    return {**fallback(row), "reason": why, "repairs": repairs, "retried": True}
 
 
 def present_all(qs: list[dict], rows: list[dict], meter: llm.CostMeter, workers: int = 6,
@@ -148,4 +186,6 @@ def present_all(qs: list[dict], rows: list[dict], meter: llm.CostMeter, workers:
         outs = list(pool.map(lambda r: present_one(by_id[r["qid"]], r, meter, complete), todo))
     items = {r["qid"]: o for r, o in zip(todo, outs)}
     return {"model": MODEL, "items": items, "attempted": len(todo),
-            "fallbacks": sum(not o["presented"] for o in outs)}
+            "fallbacks": sum(not o["presented"] for o in outs),
+            "repaired": sum(bool(o.get("repairs")) and o["presented"] for o in outs),
+            "retried": sum(bool(o.get("retried")) for o in outs)}

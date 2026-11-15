@@ -48,20 +48,55 @@ class PresentTest(unittest.TestCase):
         self.assertNotIn("value_label", c.calls[0]["schema"]["properties"])
         self.assertEqual(r["value_label"], "")
 
-    def test_guard_rejects_new_numbers_bad_cites_and_lengths(self):
+    def test_guard_rejects_what_cannot_be_repaired_after_one_retry(self):
         cases = [
             {**GOOD, "points": [{"text": "The board grew to 14 directors.", "cites": [3]}]},  # new number
-            {**GOOD, "points": [{"text": "Something.", "cites": [2]}]},                         # unverified quote
+            {**GOOD, "points": [{"text": "Something.", "cites": [2]}]},                         # only an unverified cite
             {**GOOD, "points": [{"text": "Something.", "cites": []}]},                          # no cite
-            {**GOOD, "gist": " ".join(["word"] * 13)},                                          # gist too long
-            {**GOOD, "points": [GOOD["points"][0]] * 6},                                        # too many points
             {**GOOD, "value_label": "Yes with four words"},                                     # label too long
             {**GOOD, "value_label": "13 of 14"},                                                # label number guard
         ]
         for out in cases:
-            r = present.present_one(Q, ROW, llm.CostMeter(), complete=stub(out))
+            c = stub(out)
+            r = present.present_one(Q, ROW, llm.CostMeter(), complete=c)
             self.assertFalse(r["presented"], out)
             self.assertTrue(r["reason"])
+            self.assertTrue(r["retried"])
+            self.assertEqual(len(c.calls), 2)
+            self.assertIn("Your previous output broke this rule:", c.calls[1]["user"])
+            self.assertIn(r["reason"], c.calls[1]["user"])
+
+    def test_repairs_trim_points_drop_stray_cites_and_swap_long_gist(self):
+        out = {"gist": " ".join(["word"] * 13),
+               "points": [{"text": "BILL entered into a cooperation agreement on October 15, 2025.", "cites": [1, 2, 9]}]
+                         + [{"text": "The board grew from 12 to 13 directors.", "cites": [3]}] * 6,
+               "value_label": "Yes"}
+        c = stub(out)
+        r = present.present_one(Q, ROW, llm.CostMeter(), complete=c)
+        self.assertTrue(r["presented"])
+        self.assertFalse(r["retried"])
+        self.assertEqual(len(c.calls), 1)
+        self.assertEqual(len(r["points"]), 5)
+        self.assertEqual(r["points"][0]["cites"], [1])
+        self.assertEqual(r["gist"], "Yes. On October 15, 2025, BILL entered into a cooperation agreement with Starboard Value")
+        self.assertEqual(len(r["repairs"]), 3)
+
+    def test_repair_does_not_invent_a_cite(self):
+        fixed, done = present.repair({**GOOD, "points": [{"text": "x", "cites": [2]}]}, ROW)
+        self.assertEqual(fixed["points"][0]["cites"], [2])  # left for the guard to reject
+        self.assertEqual(done, [])
+
+    def test_retry_succeeds_after_a_broken_rule(self):
+        outs = iter([{**GOOD, "points": [{"text": "The board grew to 14 directors.", "cites": [3]}]}, GOOD])
+        calls = []
+
+        def complete(model, system, user, schema, meter, effort=None, max_tokens=0):
+            calls.append(user)
+            return next(outs)
+        r = present.present_one(Q, ROW, llm.CostMeter(), complete=complete)
+        self.assertTrue(r["presented"])
+        self.assertTrue(r["retried"])
+        self.assertIn("number 14 is not in the answer", calls[1])
 
     def test_reformatted_numbers_from_the_answer_pass(self):
         row = {**ROW, "answer": "Total revenue was $1,653,160 thousand for FY2026."}
@@ -77,17 +112,21 @@ class PresentTest(unittest.TestCase):
         nf = present.present_one(Q, {**ROW, "status": "not_found"}, llm.CostMeter(), complete=stub(GOOD))
         self.assertFalse(nf["presented"])
 
-    def test_present_all_counts_fallbacks_and_skips_ineligible(self):
-        rows = [ROW, {**ROW, "qid": "x"}, {**ROW, "qid": "rev_arr", "status": "not_found"}]
-        qs = [Q, {**Q, "id": "x"}, {**Q, "id": "rev_arr"}]
-        outs = iter([GOOD, {**GOOD, "gist": ""}])
+    def test_present_all_counts_fallbacks_repairs_retries_and_skips_ineligible(self):
+        rows = [ROW, {**ROW, "qid": "x"}, {**ROW, "qid": "y"}, {**ROW, "qid": "rev_arr", "status": "not_found"}]
+        qs = [Q, {**Q, "id": "x"}, {**Q, "id": "y"}, {**Q, "id": "rev_arr"}]
+        bad = {**GOOD, "gist": ""}
+        long_gist = {**GOOD, "gist": " ".join(["word"] * 13)}
+        outs = iter([GOOD, bad, bad, long_gist])
 
         def complete(*a, **k):
             return next(outs)
         res = present.present_all(qs, rows, llm.CostMeter(), workers=1, complete=complete)
-        self.assertEqual(res["attempted"], 2)
+        self.assertEqual(res["attempted"], 3)
         self.assertEqual(res["fallbacks"], 1)
-        self.assertEqual(set(res["items"]), {"gov_activist", "x"})
+        self.assertEqual(res["retried"], 1)
+        self.assertEqual(res["repaired"], 1)
+        self.assertEqual(set(res["items"]), {"gov_activist", "x", "y"})
 
     def test_first_sentence(self):
         self.assertEqual(present.first_sentence("Revenue was $1.65 billion. It grew 13%."), "Revenue was $1.65 billion.")
