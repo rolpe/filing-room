@@ -1,0 +1,64 @@
+/* Design tokens. Ported from the approved mockups (docs/mockups/). One place for colour, type and sizing. */
+:root {
+  /* ink and ground */
+  --ink: #14161a;
+  --ink-2: #3c424c;
+  --ink-3: #5d6470;
+  --ground: #ffffff;
+  --panel: #f6f6f3;
+  --panel-2: #eeeeea;
+  --line: #e4e4df;
+  --line-strong: #cdcdc7;
+  --hover-line: #b9b9b2;
+  --ink-hover: #2a2e36;
+
+  /* sidebar rail */
+  --rail: #15171b;
+  --rail-2: #24282f;
+  --rail-line: #2c3038;
+  --rail-text: #c8ccd3;
+  --rail-muted: #8d939d;
+
+  /* highlighted filing text: the only use of yellow */
+  --mark: #ffe680;
+  --mark-strong: #ffcf33;
+  --mark-ink: #4a3a00;
+
+  /* statuses */
+  --ok: #17694a;
+  --ok-wash: #e5f2eb;
+  --warn: #8a4706;
+  --warn-wash: #fbeedb;
+  --bad: #9b1c1c;
+  --bad-wash: #fbe9e9;
+
+  /* filing text */
+  --filing-ink: #23262c;
+  --filing-ctx: #5b616b;
+
+  /* type */
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --serif: Charter, "Bitstream Charter", "Iowan Old Style", "Sitka Text", Georgia, serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fs-sm: 12px;
+  --fs: 13px;
+  --fs-lead: 14px;
+  --fs-filing: 15px;
+  --fs-h2: 17px;
+  --fs-h1: 20px;
+
+  /* layout */
+  --rail-w: 208px;
+  --gutter: 24px;
+  --radius: 7px;
+  --radius-sm: 4px;
+  --shadow-pop: 0 10px 30px -10px rgba(20, 22, 26, .35), 0 1px 3px rgba(20, 22, 26, .12);
+  --shadow-drawer: -18px 0 40px -18px rgba(20, 22, 26, .35);
+}
+
+@media (max-width: 1240px) {
+  :root { --rail-w: 52px; }
+}
+@media (max-width: 1020px) {
+  :root { --gutter: 16px; }
+}

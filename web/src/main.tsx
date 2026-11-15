@@ -1,12 +1,49 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { Shell } from "./components/Shell";
+import { CoveragePage } from "./pages/Coverage";
+import { CompanyPage } from "./pages/Company";
+import { FindingsPage } from "./pages/Findings";
+import { Placeholder } from "./pages/Placeholder";
+import { ErrorState } from "./components/States";
+import "./styles/tokens.css";
+import "./styles/app.css";
 
-function App() {
-  return <p style={{ padding: 24 }}>filing-room</p>;
-}
+const qc = new QueryClient({
+  defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: 1 } },
+});
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Shell />,
+    errorElement: <ErrorState title="This page couldn't be shown" error="Reload the page, or go back to coverage." />,
+    children: [
+      { index: true, element: <CoveragePage /> },
+      {
+        path: "c/:ticker",
+        element: <CompanyPage />,
+        children: [
+          { index: true, element: <Navigate to="findings" replace /> },
+          { path: "overview", element: <Placeholder name="Overview" /> },
+          { path: "findings", element: <FindingsPage /> },
+          { path: "memo", element: <Placeholder name="Screening memo" /> },
+          { path: "qa", element: <Placeholder name="Q&A" /> },
+          { path: "filings", element: <Placeholder name="Filings" /> },
+        ],
+      },
+      { path: "usage", element: <Placeholder name="Usage" /> },
+      { path: "*", element: <ErrorState title="Page not found" error="There's nothing at this address." /> },
+    ],
+  },
+]);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   </StrictMode>,
 );

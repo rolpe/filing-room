@@ -303,7 +303,9 @@ def passage_view(t: str, chunk_id: str, source: str) -> dict:
     neighbors = {n["chunk_id"] for n in ix.neighbors(chunk_id)}
     prev_id = next((n for n in neighbors if n < chunk_id), None)
     next_id = next((n for n in neighbors if n > chunk_id), None)
-    return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "heading", "subheading", "url")},
+    heading = c["heading"] if c["heading"] not in ("proxy", "press_release") else ""  # whole-document sections
+    return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "subheading", "url")},
+            "heading": heading,
             "form_label": findings.FORM_LABELS.get(c["form"], c["form"]), **p,
             "quotes_here": [n for n, _ in quotes], "prev_chunk": prev_id, "next_chunk": next_id}
 
