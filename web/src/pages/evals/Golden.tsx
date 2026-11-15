@@ -77,15 +77,15 @@ export function GoldenPage() {
             {cur?.holdout && <p className="muted small" style={{ margin: "0 0 10px" }}>Written before the held-out company was run, and not changed since.</p>}
           </div>
           <div className="tbl-wrap">
-            <table className="plain ev-golden">
-              <thead><tr><th>Item</th><th>Grade</th><th>Expected</th><th>Source</th><th>Check</th></tr></thead>
+            <table className={`plain ev-golden${sel ? " narrow-cols" : ""}`}>
+              <thead><tr><th>Item</th><th className="grade-col">Grade</th><th>Expected</th><th className="src-col">Source</th><th>Check</th></tr></thead>
               <tbody>
                 {items.map((i) => (
                   <tr key={i.id} aria-selected={i.id === sel} onClick={() => set("item", i.id)}>
                     <td><b>{i.label}</b><span className="sub">{i.qid}</span></td>
-                    <td>{i.grade}</td>
+                    <td className="grade-col">{i.grade}</td>
                     <td className="ev-wrap">{i.expected}</td>
-                    <td className="ev-wrap">
+                    <td className="ev-wrap src-col">
                       {i.source?.quotes.slice(0, 1).map((x, n) => <blockquote key={n} className="ev-quote">“{x.quote.length > 220 ? `${x.quote.slice(0, 220)}…` : x.quote}”<span>{x.doc_id.replace(/_/g, " ")}{i.source!.quotes.length > 1 ? ` · +${i.source!.quotes.length - 1} more` : ""}</span></blockquote>)}
                       {i.source?.method === "xbrl" && <span className="muted">XBRL {i.source.concepts?.join(" + ")}{i.source.end ? `, ${i.source.end}` : ""}</span>}
                       {i.source?.method === "derived" && <span className="muted">Computed from other XBRL items</span>}

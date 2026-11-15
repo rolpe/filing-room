@@ -81,7 +81,7 @@ answered checklist ──> Claude: IC memo, every factual sentence tagged with t
 - **Companies:** BILL (June fiscal year; Starboard activist settlement) and Rapid7 (December FY; Jana activist stake, CEO change June 2026) for building and tuning. **Box** (January FY) was held out: not parsed or looked at until the system was frozen (git tag `frozen-for-holdout`), then run once.
 - **Corpus per company:** last two 10-Ks, last four 10-Qs, latest proxy (DEF 14A), latest earnings release (8-K exhibit 99.1).
 - **Citations can't be invented:** the model returns quotes; code checks each one appears word-for-word in the passage it cites. An answer with no verified quote is flagged `unsupported` and scored wrong.
-- **Ground truth:** 120 golden items (40 questions × 3 companies). Numbers come from EDGAR's XBRL financial data, generated automatically; text answers were drafted from the filings with the exact supporting quote, and are checked in `golden/REVIEW.md`.
+- **Ground truth:** 120 golden items (40 questions × 3 companies). Numbers come from EDGAR's XBRL financial data, generated automatically; text answers were drafted from the filings with the exact supporting quote and still need checking by hand (`golden/REVIEW.md`, or the Golden set screen in the app's Evaluation area).
 - **No vector database:** filings use consistent vocabulary and the checklist says where each answer should live, so plain-Python keyword search (BM25) was enough: the right number was in the retrieved passages for 100% of tuning-set numeric questions and 91% on the held-out company.
 
 ### What broke and how it was fixed

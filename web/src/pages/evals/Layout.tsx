@@ -13,7 +13,7 @@ export function EvalsLayout() {
     <>
       <div className="page-head ev-head">
         <h1>Evaluation</h1>
-        <span className="count">How the answering engine is measured: answers graded against a hand-checked answer key</span>
+        <span className="count">How the answering engine is measured: answers graded against an answer key</span>
       </div>
       <nav className="tabs" aria-label="Evaluation sections">
         <NavLink to="/evals" end>Runs</NavLink>

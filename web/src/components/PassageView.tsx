@@ -78,16 +78,17 @@ export function PassageView({ ticker, source, citations, active, onActive, scrol
   const [after, setAfter] = useState<string[]>([]);
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => { setBefore([]); setAfter([]); }, [chunk]);
-  const lastActive = useRef(active);
-  useEffect(() => {  // bring the active quote into view when the reader moves to another one (not on first open)
+  const lastActive = useRef<number | null>(null);
+  useEffect(() => {  // bring the active quote into view when the passage opens and when the reader moves to another
     if (!q.data || !body.current || q.data.chunk_id !== chunk || lastActive.current === active) return;
+    const opening = lastActive.current === null;  // first show: jump straight there; later moves animate
     lastActive.current = active;
     const el = body.current.querySelector(`mark[data-cite="${c?.n}"]`) as HTMLElement | null;
     const root = scrollRoot?.current;
     if (el && root) {
       const r = el.getBoundingClientRect();
       const rr = root.getBoundingClientRect();
-      if (r.top < rr.top + 40 || r.bottom > rr.bottom - 20) root.scrollTo({ top: root.scrollTop + r.top - rr.top - rr.height / 3, behavior: "smooth" });
+      if (r.top < rr.top + 40 || r.bottom > rr.bottom - 20) root.scrollTo({ top: root.scrollTop + r.top - rr.top - rr.height / 3, behavior: opening ? "auto" : "smooth" });
     }
   }, [q.data, active, chunk, c?.n, scrollRoot]);
 
