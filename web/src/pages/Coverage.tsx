@@ -127,7 +127,7 @@ function Row({ r, open }: { r: CoverageRow; open: () => void }) {
       {r.state === "processing" && r.job && (
         <td colSpan={2}>
           <span className="prog" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(r.job.fraction * 100)} aria-label={`${r.ticker} screening progress`}>
-            <span className="track"><i style={{ width: `${Math.max(3, r.job.fraction * 100)}%` }} /></span>{r.job.label}
+            <span className="track"><i style={{ transform: `scaleX(${Math.max(0.03, r.job.fraction)})` }} /></span>{r.job.label}
           </span>
         </td>
       )}

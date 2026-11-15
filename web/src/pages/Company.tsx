@@ -128,7 +128,7 @@ function NotReady({ c }: { c: CompanyHeader }) {
         <Notice icon="usage">
           <p><b>Screening in progress.</b> Findings, memo and Q&amp;A open when it finishes.</p>
           <span className="sp" />
-          <span className="prog wide"><span className="track"><i style={{ width: `${Math.max(3, j.fraction * 100)}%` }} /></span>{j.label}</span>
+          <span className="prog wide"><span className="track"><i style={{ transform: `scaleX(${Math.max(0.03, j.fraction)})` }} /></span>{j.label}</span>
         </Notice>
       )}
       {c.state === "failed" && (
