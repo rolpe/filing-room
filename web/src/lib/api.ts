@@ -196,6 +196,7 @@ export interface Citation {
   filing_date: string | null;
   section: string;
   url: string | null;
+  in_set?: boolean;
 }
 
 export interface Point {
@@ -245,6 +246,8 @@ export interface Passage {
   quotes_here: number[];
   prev_chunk: string | null;
   next_chunk: string | null;
+  /** The cited passage isn't in the current filings (a refresh replaced its filing). */
+  missing?: boolean;
 }
 
 export interface Financials {

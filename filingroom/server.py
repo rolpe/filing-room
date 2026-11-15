@@ -293,12 +293,25 @@ def _source_citations(t: str, source: str) -> list[dict]:
 
 
 def passage_view(t: str, chunk_id: str, source: str) -> dict:
+    if not chunk_id.startswith(t + "_"):
+        raise KeyError(chunk_id)
     ix = _index(t)
     c = ix.by_id.get(chunk_id)
-    if not c or not chunk_id.startswith(t + "_"):
-        raise KeyError(chunk_id)
     cits = _source_citations(t, source)
     quotes = [(i + 1, x["quote"]) for i, x in enumerate(cits) if x.get("chunk_id") == chunk_id]
+    if not c:
+        # A cited passage that isn't in the current index: its filing was replaced by a newer one (or the passage
+        # moved). Say so plainly; the quotes themselves still show in the panel.
+        cited = next((x for x in cits if x.get("chunk_id") == chunk_id), None)
+        if not cited:
+            raise KeyError(chunk_id)
+        docs = findings.doc_meta(_manifest(t))
+        d = findings.doc_info(cited.get("doc_id"), docs)
+        return {"chunk_id": chunk_id, "doc_id": cited.get("doc_id"), "form": d.get("form", ""), "period": d.get("period", ""),
+                "filing_date": d.get("filing_date", ""), "heading": "", "subheading": "", "url": cited.get("url", ""),
+                "form_label": findings.FORM_LABELS.get(d.get("form", ""), d.get("form", "") or "Filing"),
+                "blocks": [], "found": [], "quotes_here": [n for n, _ in quotes], "prev_chunk": None,
+                "next_chunk": None, "missing": True, "in_set": d["in_set"]}
     p = findings.passage(c, quotes)
     neighbors = {n["chunk_id"] for n in ix.neighbors(chunk_id)}
     prev_id = next((n for n in neighbors if n < chunk_id), None)
@@ -307,7 +320,7 @@ def passage_view(t: str, chunk_id: str, source: str) -> dict:
     return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "subheading", "url")},
             "heading": heading,
             "form_label": findings.FORM_LABELS.get(c["form"], c["form"]), **p,
-            "quotes_here": [n for n, _ in quotes], "prev_chunk": prev_id, "next_chunk": next_id}
+            "quotes_here": [n for n, _ in quotes], "prev_chunk": prev_id, "next_chunk": next_id, "missing": False}
 
 
 def memo_api(t: str) -> dict | None:
@@ -419,9 +432,7 @@ def estimate(t: str | None) -> dict:
         need_present = not store.get(t, "present.json")
         need_memo = not store.get(t, "memo.json")
     usd = PER_ANSWER_USD * (total - done) + (PRESENT_USD if need_present else 0) + (MEMO_USD if need_memo else 0)
-    left = (total - done) / total
-    minutes = "4-6" if done == 0 else ("1-2" if left < 0.3 else "2-4")
-    return {"usd": round(usd, 2), "minutes": minutes, "answers_done": done, "answers_total": total}
+    return {"usd": round(usd, 2), "minutes": "a few minutes", "answers_done": done, "answers_total": total}
 
 
 def preview_view(t: str) -> dict:
@@ -514,6 +525,7 @@ def _run_job(t: str) -> None:
         co = store.get(t, "company.json") or {}
         store.put(t, "company.json", {**co, "name": entry["name"], "cik": entry["cik"],
                                       "fiscal_year_end": entry["fiscal_year_end"]})
+        store.seed_raw(t)  # filings the CLI cache already holds are copied, not downloaded again
         pipeline.build(t, stage=stage)
         with _lock:
             _indexes.pop(t, None)
@@ -744,6 +756,7 @@ def serve(port: int = 8787, open_browser: bool = True) -> None:
     llm.MAX_USD_PER_COMMAND = float("inf")  # long-lived process: per-job limits and daily ledgers apply instead
     if not (WEB_DIST / "index.html").exists():
         print("The web app isn't built yet. Build it with:\n  npm --prefix web install && npm --prefix web run build")
+    store.use_filing_cache()  # the app's own filings; the CLI's data/raw|parsed|index stay as the evals left them
     recover_interrupted()
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
@@ -751,7 +764,7 @@ def serve(port: int = 8787, open_browser: bool = True) -> None:
         raise SystemExit(f"Port {port} is already in use (maybe the app is already running?). Try ./fr ui --port {port + 1}")
     url = f"http://127.0.0.1:{port}/"
     print(f"filing-room on {url}  (local only; Ctrl-C to stop)")
-    print(f"app data: {store.root()}")
+    print(f"app data: {store.root()} (filings cached in {store.filings_root()})")
     print(f"paid actions: questions ${ASK_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY), "
           f"screenings ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)")
     if open_browser:

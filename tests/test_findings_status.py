@@ -1,6 +1,6 @@
 import unittest
 
-from filingroom.findings import derive_status
+from filingroom.findings import derive_status, doc_from_id, doc_info, source_label
 
 
 def row(status="answered", verified=(True,), confidence="high"):
@@ -45,6 +45,25 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(s["status"], "review")
         self.assertIsNone(s["reviewed_at"])
         self.assertEqual(derive_status(row("not_found", verified=()), ann={"flagged": True})["status"], "review")
+
+    def test_citing_a_filing_no_longer_in_the_set_needs_review(self):
+        r = {"status": "answered", "confidence": "high",
+             "citations": [{"quote": "q", "verified": True, "doc_id": "BILL_DEF14A_2025"},
+                           {"quote": "q2", "verified": True, "doc_id": "BILL_10K_FY2026"}]}
+        docs = {"BILL_10K_FY2026": {"form": "10-K", "period": "FY2026"}}
+        s = derive_status(r, docs=docs)
+        self.assertEqual(s["status"], "review")
+        self.assertIn("Cites a filing no longer in the current set (DEF 14A 2025)", s["reasons"])
+        self.assertEqual(derive_status(r, docs={**docs, "BILL_DEF14A_2025": {}})["status"], "verified")
+        self.assertEqual(derive_status(r)["status"], "verified")  # no manifest: nothing to compare against
+
+    def test_doc_fallbacks_for_replaced_filings(self):
+        self.assertEqual(doc_from_id("BILL_DEF14A_2025"), {"doc_id": "BILL_DEF14A_2025", "form": "DEF 14A", "period": "2025"})
+        self.assertEqual(doc_from_id("BILL_10Q_Q3FY2025")["period"], "Q3 FY2025")
+        self.assertEqual(doc_from_id("garbage"), {})
+        row = {"citations": [{"verified": True, "doc_id": "BILL_DEF14A_2025"}]}
+        self.assertEqual(source_label(row, {}), "DEF 14A 2025")
+        self.assertFalse(doc_info("BILL_DEF14A_2025", {})["in_set"])
 
     def test_reviewed_does_not_change_a_clean_or_missing_finding(self):
         self.assertEqual(derive_status(row(), ann={"reviewed_at": "x"})["reviewed_at"], None)

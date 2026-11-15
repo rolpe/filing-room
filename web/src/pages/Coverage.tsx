@@ -52,7 +52,7 @@ function FirstRun() {
           <dt>Sources</dt>
           <dd>The last two 10-Ks, last four 10-Qs, latest proxy statement and latest earnings release, from SEC EDGAR. Nothing else.</dd>
           <dt>Cost and time</dt>
-          <dd>About $1.25 in model usage and 4–6 minutes per company. You confirm the cost before anything runs; spending is capped per day.</dd>
+          <dd>About $1.25 in model usage and a few minutes per company. You confirm the cost before anything runs; spending is capped per day.</dd>
         </dl>
       </div>
     </div>

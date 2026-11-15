@@ -82,7 +82,7 @@ function AddDialog({ ticker, onClose }: { ticker: string; onClose: () => void })
           <dt>Filings to read</dt><dd>{filingsText(p.filings) || "None found"}</dd>
           {p.eligible && !ready && <>
             <dt>{resume ? "To finish" : "Estimated cost"}</dt>
-            <dd><b>About {money(p.estimate.usd)}</b> in model usage · {p.estimate.minutes} minutes
+            <dd><b>About {money(p.estimate.usd)}</b> in model usage · {p.estimate.minutes}
               {resume && p.estimate.answers_done > 0 && <div className="muted">{p.estimate.answers_done} of {p.estimate.answers_total} answers are kept from the first attempt</div>}
             </dd>
             <dt>Today</dt><dd>{money(p.cap.today_usd)} of {money(p.cap.cap_usd)} daily screening budget used</dd>

@@ -1,5 +1,6 @@
-"""Presentation pass (app only): one cheap call per answered finding that turns the answer text and its verified
-quotes into a short gist and 1-5 cited points. It never changes the answer and adds no facts:
+"""Presentation pass (app only): one cheap call per finding. For an answered finding it turns the answer text and its
+verified quotes into a short gist and 1-5 cited points; for one not found in the filings, into plain wording about
+what wasn't found and what related information was. It never changes the answer and adds no facts:
 
   - the model sees only the answer and the quotes already verified against the filing;
   - small problems are repaired without adding anything (too many points, a stray cite, an over-long gist);
@@ -43,6 +44,37 @@ def verified_quotes(row: dict) -> list[tuple[int, str]]:
 
 def eligible(row: dict) -> bool:
     return row.get("status") == "answered" and bool(verified_quotes(row))
+
+
+def eligible_not_found(row: dict) -> bool:
+    """Not found in the filings, with an explanation to turn into product wording."""
+    return row.get("status") == "not_found" and bool((row.get("answer") or "").strip())
+
+
+NOT_FOUND_GIST = "Not found in the filings read"
+NOT_FOUND_SCHEMA = {"type": "object", "properties": {"gist": {"type": "string"}, "point": {"type": "string"}},
+                    "required": ["gist", "point"], "additionalProperties": False}
+MAX_NOT_FOUND_POINT_WORDS = 60
+
+
+def build_user_not_found(q: dict, row: dict) -> str:
+    return (f"<finding status=\"not_found\">\nLabel: {q.get('label', q['id'])}\nQuestion: {q['question']}\n"
+            f"Note from reading the filings: {row['answer']}\n</finding>\n\n"
+            "This finding was not found in the filings read. Write the not-found gist and point.")
+
+
+def guard_not_found(out: dict, row: dict) -> str | None:
+    gist, point = (out.get("gist") or "").strip(), (out.get("point") or "").strip()
+    if not gist or len(gist.split()) > MAX_GIST_WORDS:
+        return "gist missing or too long"
+    if not point or len(point.split()) > MAX_NOT_FOUND_POINT_WORDS:
+        return "point missing or too long"
+    hay = (row.get("answer") or "").replace(",", "")
+    for text in (gist, point):
+        for num in _numbers(text):
+            if num not in hay:
+                return f"number {num} is not in the note"
+    return None
 
 
 def build_user(q: dict, row: dict) -> str:
@@ -132,7 +164,10 @@ def first_sentence(text: str) -> str:
 
 
 def fallback(row: dict) -> dict:
-    """Shown when there is no presentation output: the answer's first sentence and the answer as one cited point."""
+    """Shown when there is no presentation output: the answer's first sentence and the answer as one cited point.
+    A not-found answer gets plain product wording instead of the model's note."""
+    if row.get("status") == "not_found":
+        return {"gist": NOT_FOUND_GIST, "points": [], "value_label": "", "presented": False}
     cites = [n for n, _ in verified_quotes(row)]
     answer_text = (row.get("answer") or "").strip()
     return {"gist": first_sentence(answer_text), "points": [{"text": answer_text, "cites": cites}] if answer_text else [],
@@ -150,6 +185,8 @@ def clean(out: dict, want_label: bool) -> dict:
 def present_one(q: dict, row: dict, meter: llm.CostMeter, complete=llm.complete_json) -> dict:
     """Presentation for one finding: call, repair, check; on a failed check retry once with the broken rule named;
     {"presented": False, ...} with a reason when that fails too. Records repairs and whether it retried."""
+    if eligible_not_found(row):
+        return present_not_found(q, row, meter, complete)
     if not eligible(row):
         return {**fallback(row), "reason": "not answered with a verified quote"}
     want_label = q.get("answer_type") not in NUMERIC_TYPES
@@ -177,11 +214,38 @@ def present_one(q: dict, row: dict, meter: llm.CostMeter, complete=llm.complete_
     return {**fallback(row), "reason": why, "repairs": repairs, "retried": True}
 
 
+def present_not_found(q: dict, row: dict, meter: llm.CostMeter, complete=llm.complete_json) -> dict:
+    """Product wording for a finding the filings didn't answer: what wasn't found and any related information the
+    reading turned up, using only the model's own note (no new facts, same number guard, one retry)."""
+    user = build_user_not_found(q, row)
+    why = None
+    for attempt in range(2):
+        msg = user if attempt == 0 else (
+            f"{user}\n\nYour previous output broke this rule: {why}. Return the whole JSON again and follow every rule.")
+        try:
+            out = complete(MODEL, answer.load_prompt("present.md"), msg, NOT_FOUND_SCHEMA, meter,
+                           effort=EFFORT, max_tokens=2000)
+        except llm.LLMError as e:
+            why = str(e)
+            continue
+        except SystemExit:
+            raise
+        except Exception as e:
+            return {**fallback(row), "reason": f"{e.__class__.__name__}: {e}"[:200], "retried": attempt > 0}
+        why = guard_not_found(out, row)
+        if not why:
+            return {"gist": out["gist"].strip().rstrip("."), "points": [{"text": out["point"].strip(), "cites": []}],
+                    "value_label": "", "presented": True, "repairs": [], "retried": attempt > 0}
+    return {**fallback(row), "reason": why, "repairs": [], "retried": True}
+
+
 def present_all(qs: list[dict], rows: list[dict], meter: llm.CostMeter, workers: int = 6,
-                complete=llm.complete_json) -> dict:
-    """Run the pass over every eligible answer. Result is stored as the company's present.json."""
-    by_id = {q["id"]: q for q in qs}
-    todo = [r for r in rows if r["qid"] in by_id and eligible(r)]
+                complete=llm.complete_json, only: set[str] | None = None) -> dict:
+    """Run the pass over every eligible finding (answered or not found; hidden questions skipped), or only the
+    qids in `only`. Result is stored as the company's present.json."""
+    by_id = {q["id"]: q for q in qs if not q.get("hidden")}
+    todo = [r for r in rows if r["qid"] in by_id and (eligible(r) or eligible_not_found(r))
+            and (only is None or r["qid"] in only)]
     with ThreadPoolExecutor(max_workers=workers) as pool:
         outs = list(pool.map(lambda r: present_one(by_id[r["qid"]], r, meter, complete), todo))
     items = {r["qid"]: o for r, o in zip(todo, outs)}

@@ -9,6 +9,7 @@ DATA = ROOT / "data"
 RAW = DATA / "raw"          # untouched EDGAR downloads (cache; never re-downloaded)
 PARSED = DATA / "parsed"    # one JSON per filing: sections + text
 INDEX = DATA / "index"      # chunks per company
+CLI_RAW = RAW              # the CLI's filing cache; the app reads it only to copy already-downloaded filings
 RUNS = ROOT / "runs"        # answered checklists
 RESULTS = ROOT / "results"  # eval results (committed)
 PROMPTS = ROOT / "prompts"
@@ -16,6 +17,13 @@ CHECKLIST = ROOT / "checklist" / "checklist.json"
 GOLDEN = ROOT / "golden" / "golden.jsonl"
 COMPANIES = ROOT / "config" / "companies.json"
 USER_COMPANIES = DATA / "companies_user.json"  # added from the UI or `./fr add`; never part of evals
+
+
+def use_filing_cache(root: Path) -> None:
+    """Point fetch/parse/index at another filing cache (the app's own), leaving the CLI's data/raw|parsed|index alone.
+    Every module reads config.RAW/PARSED/INDEX at call time, so this switches the whole process."""
+    global RAW, PARSED, INDEX
+    RAW, PARSED, INDEX = root / "raw", root / "parsed", root / "index"
 
 
 def load_env() -> None:

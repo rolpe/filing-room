@@ -113,8 +113,9 @@ class PresentTest(unittest.TestCase):
         self.assertFalse(nf["presented"])
 
     def test_present_all_counts_fallbacks_repairs_retries_and_skips_ineligible(self):
-        rows = [ROW, {**ROW, "qid": "x"}, {**ROW, "qid": "y"}, {**ROW, "qid": "rev_arr", "status": "not_found"}]
-        qs = [Q, {**Q, "id": "x"}, {**Q, "id": "y"}, {**Q, "id": "rev_arr"}]
+        rows = [ROW, {**ROW, "qid": "x"}, {**ROW, "qid": "y"}, {**ROW, "qid": "rev_arr", "status": "not_found", "answer": ""},
+                {**ROW, "qid": "na_projections"}]
+        qs = [Q, {**Q, "id": "x"}, {**Q, "id": "y"}, {**Q, "id": "rev_arr"}, {**Q, "id": "na_projections", "hidden": True}]
         bad = {**GOOD, "gist": ""}
         long_gist = {**GOOD, "gist": " ".join(["word"] * 13)}
         outs = iter([GOOD, bad, bad, long_gist])
@@ -127,6 +128,24 @@ class PresentTest(unittest.TestCase):
         self.assertEqual(res["retried"], 1)
         self.assertEqual(res["repaired"], 1)
         self.assertEqual(set(res["items"]), {"gov_activist", "x", "y"})
+
+    def test_not_found_gets_product_wording_from_the_note_only(self):
+        nf = {"qid": "rev_arr", "status": "not_found", "citations": [],
+              "answer": "The provided excerpts do not contain an ARR figure. They report a 95% net dollar-based retention rate."}
+        q = {**Q, "id": "rev_arr", "label": "Annual recurring revenue"}
+        good = {"gist": "No ARR figure in the filings read",
+                "point": "The filings read don't give ARR. They report a 95% net dollar-based retention rate instead."}
+        c = stub(good)
+        r = present.present_one(q, nf, llm.CostMeter(), complete=c)
+        self.assertTrue(r["presented"])
+        self.assertEqual(r["points"], [{"text": good["point"], "cites": []}])
+        self.assertIn('status="not_found"', c.calls[0]["user"])
+        self.assertEqual(c.calls[0]["schema"], present.NOT_FOUND_SCHEMA)
+        bad = present.present_one(q, nf, llm.CostMeter(), complete=stub({**good, "point": "They report 97% retention."}))
+        self.assertFalse(bad["presented"])
+        self.assertTrue(bad["retried"])
+        self.assertEqual(bad["gist"], present.NOT_FOUND_GIST)  # never the engine's "provided excerpts" wording
+        self.assertEqual(bad["points"], [])
 
     def test_first_sentence(self):
         self.assertEqual(present.first_sentence("Revenue was $1.65 billion. It grew 13%."), "Revenue was $1.65 billion.")

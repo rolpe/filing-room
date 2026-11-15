@@ -23,7 +23,7 @@ npm --prefix web install && npm --prefix web run build
 
 Coverage starts empty: find a company by name or ticker and confirm the cost to add it.
 
-**Cost and limits.** Screening a company costs about $1.25 in model usage and takes 4–6 minutes; each screening stops at $2.50 and screenings are capped at $3/day (`RUN_MAX_USD_PER_DAY`). A question costs up to $0.05, capped at $1/day (`UI_MAX_USD_PER_DAY`). The cost is shown before every paid action and confirmed in the request; the actual cost is shown after, and the Usage screen keeps the totals. If the app is closed mid-screening, resuming keeps the answers already paid for.
+**Cost and limits.** Screening a company costs about $1.25 in model usage and takes a few minutes; each screening stops at $2.50 and screenings are capped at $3/day (`RUN_MAX_USD_PER_DAY`). A question costs up to $0.05, capped at $1/day (`UI_MAX_USD_PER_DAY`). The cost is shown before every paid action and confirmed in the request; the actual cost is shown after, and the Usage screen keeps the totals. If the app is closed mid-screening, resuming keeps the answers already paid for.
 
 **Private by construction.** The server listens on 127.0.0.1 only, rejects requests whose Host isn't the app itself (blocks DNS rebinding), and requires a custom header on every POST (blocks cross-site requests).
 

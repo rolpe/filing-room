@@ -13,3 +13,9 @@ Rules:
 - Use only facts in the answer. Do not add facts from the quotes that the answer leaves out, and do not add context, opinions or implications.
 - Copy every figure exactly as the answer writes it (same digits, same rounding, same units). Do not convert, round, re-scale or recompute numbers, and do not introduce any number that is not in the answer.
 - Plain, precise language. No hedging words, no marketing tone.
+
+When the finding is marked not found (`status="not_found"`), you get the model's note from reading the filings instead of quotes. Write:
+
+- `gist`: at most 12 words saying what was not found, for example "No ARR figure in the filings read". Say "in the filings read", never that the company doesn't disclose it or doesn't have it.
+- `point`: one or two plain sentences. Say what the filings read didn't contain, then any related information the note says they do contain (for example "They report net dollar-based retention instead."). If the note mentions nothing related, say only that it wasn't found in the filings read.
+- Use only facts in the note, copy figures exactly, and don't mention excerpts, passages, models or searches.

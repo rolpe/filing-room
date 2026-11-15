@@ -202,7 +202,7 @@ function Detail({ d, ticker, active, setActive, scroller }: {
       <h2>{d.label}</h2>
       <p className="q">{d.question}</p>
       {d.status === "not_disclosed" ? (
-        <Clamp key={d.qid}><p className="lead">{d.answer || "The filings reviewed don't disclose this."}</p></Clamp>
+        <p className="lead">{d.presented && d.points[0] ? d.points[0].text : "Not found in the filings read."}</p>
       ) : (
         <>
           {lead && (d.presented
@@ -220,7 +220,7 @@ function Detail({ d, ticker, active, setActive, scroller }: {
         <div><dt>Status</dt><dd>
           {d.status === "verified" && d.reviewed_at
             ? <StatusBadge status="verified" text={`Reviewed ${date(d.reviewed_at)}`} />
-            : d.status === "not_disclosed" ? <StatusBadge status="not_disclosed" text="Not disclosed in the filings" />
+            : d.status === "not_disclosed" ? <StatusBadge status="not_disclosed" text="Not found in the filings read" />
             : d.facts.quotes_found
               ? <StatusBadge status={d.status} text={`${d.facts.quotes_found} quotes found in filing`} />
               : <StatusBadge status={d.status} />}

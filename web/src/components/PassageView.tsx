@@ -93,7 +93,7 @@ export function PassageView({ ticker, source, citations, active, onActive, scrol
     <div className="doc">
       <div className="doc-head">
         <div className="t">
-          <b>{p?.form_label ?? (c.form ? `${c.form} ${c.period ?? ""}` : "Filing")}</b>
+          <b>{p?.form_label ?? (c.form ? `${c.form} ${c.period ?? ""}` : "Filing")}{p?.missing && p.period ? ` ${p.period}` : ""}</b>
           <span>{[p?.filing_date ? `Filed ${date(p.filing_date)}` : c.filing_date ? `Filed ${date(c.filing_date)}` : "",
             p ? (p.heading || p.subheading) : realSection(c.section)].filter(Boolean).join(" · ")}</span>
         </div>
@@ -114,8 +114,18 @@ export function PassageView({ ticker, source, citations, active, onActive, scrol
           </div>
         )}
         {chunk && q.isLoading && <div style={{ display: "grid", gap: 10 }}><Skeleton w="40%" /><Skeleton /><Skeleton /><Skeleton w="70%" /></div>}
-        {chunk && q.isError && <p className="miss">This passage could not be loaded. {(q.error as Error).message}</p>}
-        {p && <>
+        {chunk && q.isError && (
+          <div className="notice miss"><Icon name="alert" /><p>This passage couldn't be loaded ({(q.error as Error).message}). The quote as cited:
+            <br /><span style={{ fontFamily: "var(--serif)" }}>“{c.quote}”</span></p></div>
+        )}
+        {p?.missing && (
+          <div className="notice warn miss">
+            <Icon name="alert" />
+            <p>This passage is in the {[p.form, p.period].filter(Boolean).join(" ") || "filing"}, which is no longer in the current set of filings for this company, so it can't be shown in context. The quote as cited:
+              <br /><span style={{ fontFamily: "var(--serif)" }}>“{c.quote}”</span></p>
+          </div>
+        )}
+        {p && !p.missing && <>
           {p.prev_chunk && before.length < MAX_EXTRA && (
             <div className="more"><button className="btn sm ghost" onClick={() => setBefore((b) => [prevOf(p, b), ...b].filter(Boolean) as string[])}>
               <Icon name="up" />Earlier text</button></div>

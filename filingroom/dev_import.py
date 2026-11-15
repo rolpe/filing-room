@@ -2,7 +2,8 @@
 
     FILINGROOM_APP_DIR=data/app-dev uv run python -m filingroom.dev_import BILL --run runs/BILL_2026-09-27_1558.json
 
-Refuses to write to the default store (data/app), which ships empty. Runs from before the SEC number check get it
+Refuses to write to the default store (data/app), which ships empty. Copies the company's CLI corpus (filings,
+manifest) into the store's own filing cache and parses and indexes it there. Runs from before the SEC number check get it
 computed here (free: XBRL company facts). Imported runs have no presentation pass, so they show the fallback text.
 """
 
@@ -12,7 +13,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from . import config, edgar, pipeline, store
+from . import config, edgar, index, parse, pipeline, store
 
 
 def main() -> None:
@@ -25,6 +26,10 @@ def main() -> None:
         sys.exit("Refusing to import into the default app store (data/app). Set FILINGROOM_APP_DIR, e.g. data/app-dev.")
     t = a.ticker.upper()
     co = config.company(t)
+    store.use_filing_cache()
+    store.copy_corpus(t)  # the CLI's corpus for this company, into the app's own filing cache (free)
+    parse.parse_company(t)
+    index.build_index(t)
     run_path = Path(a.run)
     data = json.loads(run_path.read_text())
     if "number_check" not in data["meta"]:

@@ -11,7 +11,11 @@ Layout (root = $FILINGROOM_APP_DIR, default data/app/):
                questions.jsonl       one asked question per line
                job.json              processing state
 
+  filings/{raw,parsed,index}/        the app's own filing cache (see use_filing_cache)
+
 Separate from the evaluation harness: nothing here is read by evals, and nothing in runs/ or results/ is read here.
+The app also keeps its own filing cache, so refreshing a company's filings in the app never changes the corpus the
+CLI evals read (data/raw|parsed|index). Already-downloaded filings are copied from the CLI cache, not re-fetched.
 Every write is atomic (temp file + rename) under one lock, because the job thread and request threads both write.
 """
 
@@ -146,3 +150,53 @@ def annotate(t: str, qid: str, **fields) -> dict:
             ann.pop(qid, None)
         put(t, "annotations.json", ann)
         return cur
+
+
+# ---------------------------------------------------------------- the app's filing cache
+
+def filings_root() -> Path:
+    return root() / "filings"
+
+
+def use_filing_cache() -> None:
+    """Switch this process's fetch/parse/index to the app's filing cache. The store root must sit inside the project
+    folder, because manifests record filing paths relative to it."""
+    r = filings_root().resolve()
+    r.relative_to(config.ROOT)  # raises ValueError for a store outside the project folder
+    config.use_filing_cache(r)
+
+
+def seed_raw(t: str) -> int:
+    """Copy filings already downloaded into the CLI cache (accession folders) that the app cache lacks.
+    Filings never change once filed, so a copy is as good as a download. Returns the number of files copied."""
+    if not valid_ticker(t):
+        raise ValueError(t)
+    src, dst = config.CLI_RAW / t, config.RAW / t
+    if not src.is_dir() or src.resolve() == dst.resolve():
+        return 0
+    n = 0
+    for acc in src.iterdir():
+        if acc.is_dir():
+            for f in acc.iterdir():
+                target = dst / acc.name / f.name
+                if f.is_file() and not target.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, target)
+                    n += 1
+    return n
+
+
+def copy_corpus(t: str) -> None:
+    """Copy a company's whole CLI corpus state (filings, manifest, submissions, company facts) into the app cache,
+    with manifest paths pointing at the app's copies. Used by dev_import; parse and index run afterwards."""
+    seed_raw(t)
+    src, dst = config.CLI_RAW / t, config.RAW / t
+    for name in ("submissions.json", "companyfacts.json"):
+        if (src / name).exists():
+            shutil.copy2(src / name, dst / name)
+    rel_src = str((config.CLI_RAW / t).relative_to(config.ROOT))
+    rel_dst = str(dst.resolve().relative_to(config.ROOT))
+    man = json.loads((src / "manifest.json").read_text())
+    for d in man:
+        d["path"] = d["path"].replace(rel_src, rel_dst, 1)
+    write_json(dst / "manifest.json", man)

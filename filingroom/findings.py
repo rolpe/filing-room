@@ -21,7 +21,7 @@ NUMERIC_TYPES = {"currency", "percent", "count"}
 
 # ---------------------------------------------------------------- status
 
-def machine_reasons(row: dict | None, sec: dict | None) -> list[str]:
+def machine_reasons(row: dict | None, sec: dict | None, docs: dict[str, dict] | None = None) -> list[str]:
     if row is None:
         return ["Not answered yet"]
     st = row.get("status")
@@ -42,13 +42,20 @@ def machine_reasons(row: dict | None, sec: dict | None) -> list[str]:
         out.append("Low confidence")
     if sec and sec.get("match") is False:
         out.append("Differs from SEC structured data")
+    if docs:  # a refresh replaced a cited filing (e.g. last year's proxy): its quotes can't be shown in context
+        gone = sorted({c["doc_id"] for c in cits if c.get("doc_id") and c["doc_id"] not in docs})
+        if gone:
+            names = ", ".join(" ".join(filter(None, [doc_from_id(d).get("form"), doc_from_id(d).get("period")])) or d
+                              for d in gone)
+            out.append(f"Cites a filing no longer in the current set ({names})")
     return out
 
 
-def derive_status(row: dict | None, sec: dict | None = None, ann: dict | None = None) -> dict:
-    """{status, reasons, reviewed_at, flagged}."""
+def derive_status(row: dict | None, sec: dict | None = None, ann: dict | None = None,
+                  docs: dict[str, dict] | None = None) -> dict:
+    """{status, reasons, reviewed_at, flagged}. `docs` (the current manifest) flags citations to replaced filings."""
     ann = ann or {}
-    reasons = machine_reasons(row, sec)
+    reasons = machine_reasons(row, sec, docs)
     flagged = bool(ann.get("flagged"))
     reviewed = ann.get("reviewed_at")
     if flagged:
@@ -68,14 +75,34 @@ def doc_meta(manifest: list[dict]) -> dict[str, dict]:
     return {d["doc_id"]: d for d in manifest}
 
 
+_FORM_SLUGS = {"10K": "10-K", "10Q": "10-Q", "8K": "8-K", "DEF14A": "DEF 14A"}
+
+
+def doc_from_id(doc_id: str) -> dict:
+    """Form and period from a doc id ("BILL_DEF14A_2025" -> DEF 14A, 2025), for filings no longer in the manifest."""
+    parts = (doc_id or "").split("_")
+    if len(parts) < 3 or parts[-2] not in _FORM_SLUGS:
+        return {}
+    form, period = _FORM_SLUGS[parts[-2]], parts[-1]
+    period = re.sub(r"^(Q\d)(FY\d{4})$", r"\1 \2", period)
+    return {"doc_id": doc_id, "form": form, "period": period}
+
+
+def doc_info(doc_id: str | None, docs: dict[str, dict]) -> dict:
+    """Manifest entry for a cited filing, or form/period from its id plus in_set=False when it's no longer there."""
+    if doc_id in docs:
+        return {**docs[doc_id], "in_set": True}
+    return {**doc_from_id(doc_id or ""), "in_set": False}
+
+
 def short_period(form: str, period: str) -> str:
     return period.replace(" annual meeting", "") if form == "DEF 14A" else period
 
 
 def source_label(row: dict, docs: dict[str, dict]) -> str:
     c = next((c for c in row.get("citations", []) if c.get("verified")), None)
-    d = docs.get(c.get("doc_id")) if c else None
-    return f"{d['form']} {short_period(d['form'], d['period'])}" if d else ""
+    d = doc_info(c.get("doc_id"), docs) if c else {}
+    return f"{d['form']} {short_period(d['form'], d['period'])}" if d.get("form") else ""
 
 
 def numeric_value(q: dict, row: dict | None) -> float | None:
@@ -103,14 +130,13 @@ GROUP_ORDER = ["Ownership and governance", "Capital structure and allocation", "
 
 def finding_row(q: dict, row: dict | None, pres: dict | None, sec: dict | None, ann: dict | None,
                 docs: dict[str, dict]) -> dict:
-    st = derive_status(row, sec, ann)
+    st = derive_status(row, sec, ann, docs)
     p = pres if pres and pres.get("presented") else (present.fallback(row) if row else None)
     nv = numeric_value(q, row)
     return {
         "qid": q["id"], "label": q.get("label", q["id"]), "group": q.get("group", ""), "order": q.get("order", 999),
         "answer_type": q.get("answer_type"), **st,
-        "gist": (p or {}).get("gist", "") if st["status"] != "not_disclosed" else (
-            present.first_sentence(row.get("answer", "")) if row else ""),
+        "gist": (p or {}).get("gist", ""),
         "value": nv, "unit": (row or {}).get("unit") if nv is not None else None,
         "value_label": (p or {}).get("value_label", "") if nv is None else "",
         "source": source_label(row, docs) if row and st["status"] != "not_disclosed" else "",
@@ -119,10 +145,11 @@ def finding_row(q: dict, row: dict | None, pres: dict | None, sec: dict | None, 
 
 
 def citation_view(i: int, c: dict, docs: dict[str, dict]) -> dict:
-    d = docs.get(c.get("doc_id"), {})
+    d = doc_info(c.get("doc_id"), docs)
     return {"n": i + 1, "chunk_id": c.get("chunk_id"), "quote": c.get("quote", ""), "verified": bool(c.get("verified")),
             "doc_id": c.get("doc_id"), "form": d.get("form"), "period": d.get("period"),
-            "filing_date": d.get("filing_date"), "section": c.get("section", ""), "url": c.get("url") or d.get("url")}
+            "filing_date": d.get("filing_date"), "section": c.get("section", ""), "url": c.get("url") or d.get("url"),
+            "in_set": d["in_set"]}
 
 
 def finding_detail(q: dict, row: dict | None, pres: dict | None, sec: dict | None, ann: dict | None,

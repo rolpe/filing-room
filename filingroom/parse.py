@@ -225,5 +225,11 @@ def parse_company(ticker: str) -> list[dict]:
 
 
 def load_parsed(ticker: str) -> list[dict]:
+    """Parsed filings in the company's current manifest. Filings a corpus refresh replaced stay on disk as cache
+    but are not loaded (so they don't get indexed); without a manifest, every parsed file is loaded."""
     out_dir = config.PARSED / ticker
-    return [json.loads(p.read_text()) for p in sorted(out_dir.glob("*.json"))]
+    try:
+        current = {d["doc_id"] for d in edgar.manifest(ticker)}
+    except SystemExit:
+        current = None
+    return [json.loads(p.read_text()) for p in sorted(out_dir.glob("*.json")) if current is None or p.stem in current]

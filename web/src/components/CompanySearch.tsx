@@ -58,7 +58,11 @@ export const CompanySearch = forwardRef<SearchHandle, { large?: boolean; shortcu
     };
 
     const show = open && dq.length > 0;
-    const firstNew = items.findIndex((x) => !x.in_coverage);
+    const indexed = items.map((r, i) => ({ r, i }));
+    const groups = [
+      { key: "cov", title: "In coverage", items: indexed.filter((x) => x.r.in_coverage) },
+      { key: "sec", title: "Add from SEC EDGAR", items: indexed.filter((x) => !x.r.in_coverage) },
+    ];
     return (
       <div className={`search${large ? " lg" : ""}`}>
         <Icon name="search" />
@@ -71,17 +75,19 @@ export const CompanySearch = forwardRef<SearchHandle, { large?: boolean; shortcu
         {shortcut && <kbd>⌘K</kbd>}
         {show && (
           <div className="results scroll" id={listId} role="listbox" aria-label="Companies">
-            {res.isError && <div className="none">Search is unavailable: {(res.error as Error).message}</div>}
-            {!res.isError && res.isFetching && items.length === 0 && <div className="none">Searching SEC registrants…</div>}
-            {!res.isError && !res.isFetching && items.length === 0 && <div className="none">No SEC-registered company matches “{dq}”.</div>}
-            {items.map((r, i) => (
-              <div key={r.ticker}>
-                {i === 0 && r.in_coverage && <h3>In coverage</h3>}
-                {i === firstNew && <h3>Add from SEC EDGAR</h3>}
-                <div role="option" id={`${listId}-${i}`} aria-selected={i === active}
-                  onMouseDown={(e) => { e.preventDefault(); pick(r); }} onMouseEnter={() => setActive(i)}>
-                  <b>{r.ticker}</b><span>{r.name}</span><small>{r.in_coverage ? "Open" : "Add…"}</small>
-                </div>
+            {res.isError && <div className="none" role="presentation">Search is unavailable: {(res.error as Error).message}</div>}
+            {!res.isError && res.isFetching && items.length === 0 && <div className="none" role="presentation">Searching SEC registrants…</div>}
+            {!res.isError && !res.isFetching && items.length === 0 && <div className="none" role="presentation">No SEC-registered company matches “{dq}”.</div>}
+            {groups.map((g) => g.items.length > 0 && (
+              <div key={g.key} role="group" aria-labelledby={`${listId}-${g.key}`}>
+                <h3 id={`${listId}-${g.key}`} role="presentation">{g.title}</h3>
+                {g.items.map(({ r, i }) => (
+                  <div key={r.ticker} role="option" id={`${listId}-${i}`} aria-selected={i === active}
+                    aria-label={`${r.ticker}, ${r.name}, ${r.in_coverage ? "open" : "add"}`}
+                    onMouseDown={(e) => { e.preventDefault(); pick(r); }} onMouseEnter={() => setActive(i)}>
+                    <b>{r.ticker}</b><span>{r.name}</span><small>{r.in_coverage ? "Open" : "Add…"}</small>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
