@@ -19,3 +19,4 @@ drafts/
 # Web app build output and dependencies
 web/node_modules/
 web/dist/
+web/tsconfig.tsbuildinfo

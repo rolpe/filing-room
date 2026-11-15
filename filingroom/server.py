@@ -1,439 +1,607 @@
-"""Local web UI: a small JSON API over the project's files, plus the static frontend in ui/.
+"""Local web app: a JSON API over the app store (store.py) and the engine, plus the built frontend in web/dist.
 
 Private by construction:
   - binds to 127.0.0.1 only (not reachable from other machines);
-  - rejects requests whose Host isn't this server (blocks DNS-rebinding from other websites);
-  - POSTs must carry an X-Filing-Room header, which a cross-site page can't send without a CORS
-    preflight this server never grants.
-Everything is free except POST /api/ask, which calls Claude and is capped per day (UI_MAX_USD_PER_DAY).
-Ask never writes checklist runs or eval results, so it is open for every company, including Box.
+  - rejects requests whose Host isn't this server (blocks DNS rebinding from other websites);
+  - POSTs must carry an X-Filing-Room header, which a cross-site page can't send without a CORS preflight this
+    server never grants.
+Paid actions (screening a company, asking a question) need the caller to confirm the estimated cost in the request,
+and are capped per day in ledgers under data/ that don't depend on which app store is in use.
 """
 
 import json
 import os
 import re
+import shutil
 import threading
+import time
+import uuid
 import webbrowser
 from datetime import date, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import answer, checklist, config, edgar, golden, llm, memo, pipeline
+from . import answer, checklist, config, edgar, financials, findings, llm, memo, pipeline, present, store
 from .index import Index
 
-UI_DIR = config.ROOT / "ui"
-SPEND_LEDGER = config.DATA / "ui_spend.json"
-UI_MAX_USD_PER_DAY = float(os.environ.get("UI_MAX_USD_PER_DAY", "1.00"))
-ASK_ESTIMATE_USD = 0.05  # generous per-question estimate used for the pre-check
+WEB_DIST = config.ROOT / "web" / "dist"
 CONTENT_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
                  ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png",
-                 ".woff2": "font/woff2", ".ico": "image/x-icon"}
+                 ".woff2": "font/woff2", ".ico": "image/x-icon", ".json": "application/json", ".txt": "text/plain"}
+
+# Spend ledgers ({date: usd}); real money, so they live in data/ whatever FILINGROOM_APP_DIR says.
+ASK_LEDGER = config.DATA / "ui_spend.json"
+RUN_LEDGER = config.DATA / "run_spend.json"
+ASK_MAX_USD_PER_DAY = float(os.environ.get("UI_MAX_USD_PER_DAY", "1.00"))
+RUN_MAX_USD_PER_DAY = float(os.environ.get("RUN_MAX_USD_PER_DAY", "3.00"))
+ASK_ESTIMATE_USD = 0.05   # generous per-question estimate (typical is ~$0.03)
+ASK_LIMIT_USD = 0.25      # hard stop for one question
+RUN_LIMIT_USD = 2.50      # hard stop for one screening
+PER_ANSWER_USD = 0.025    # 40 answers ~ $1.00
+MEMO_USD = 0.20           # memo + claim check
+PRESENT_USD = 0.05        # presentation pass (small model)
+
+STAGES = {  # stage -> (label, progress fraction at start)
+    "queued": ("Starting", 0.0), "register": ("Checking filings", 0.02), "fetch": ("Downloading filings", 0.05),
+    "parse": ("Reading filings", 0.12), "index": ("Indexing", 0.17), "answer": ("Answering", 0.2),
+    "present": ("Summarizing findings", 0.82), "memo": ("Drafting screening memo", 0.88), "done": ("Done", 1.0),
+}
 
 _indexes: dict[str, Index] = {}
-_lock = threading.Lock()
+_cache: dict[tuple, tuple] = {}
+_lock = threading.RLock()
+_job_lock = threading.Lock()
+_running: dict[str, dict] = {}
 
 
-def _index(ticker: str) -> Index:
+class Busy(Exception):
+    pass
+
+
+def _index(t: str) -> Index:
     with _lock:
-        if ticker not in _indexes:
-            _indexes[ticker] = Index(ticker)
-        return _indexes[ticker]
+        if t not in _indexes:
+            _indexes[t] = Index(t)
+        return _indexes[t]
 
 
-# ---------------------------------------------------------------- data
-
-def _eval_results() -> list[dict]:
-    out = []
-    for p in sorted(config.RESULTS.glob("*.json")):
-        r = json.loads(p.read_text())
-        if "rows" in r:
-            r["name"] = p.stem
-            out.append(r)
-    return out
-
-
-def _latest_eval_rows(ticker: str) -> tuple[str | None, dict[str, dict]]:
-    for r in reversed(_eval_results()):
-        rows = {row["qid"]: row for row in r["rows"] if row["ticker"] == ticker}
-        if rows:
-            return r["name"], rows
-    return None, {}
-
-
-def _latest_run(ticker: str):
-    runs = sorted(p for p in config.RUNS.glob(f"{ticker}_*.json") if not p.stem.endswith("_memo"))
-    return runs[-1] if runs else None
-
-
-def _slim_citations(cits: list[dict]) -> list[dict]:
-    return [{k: c.get(k) for k in ("chunk_id", "quote", "verified", "url", "doc_id", "section")} for c in cits]
-
-
-def _number_check_summary(ticker: str) -> dict | None:
-    run = _latest_run(ticker)
-    if not run:
+def _cached(key: tuple, path, build):
+    """Memoize build() on a file's mtime (company facts are MBs of JSON)."""
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
         return None
-    nc = json.loads(run.read_text())["meta"].get("number_check")
-    return {"checked": nc["checked"], "matched": nc["matched"]} if nc else None
+    hit = _cache.get(key)
+    if hit and hit[0] == mtime:
+        return hit[1]
+    val = build()
+    _cache[key] = (mtime, val)
+    return val
 
 
-def companies() -> list[dict]:
-    out = []
-    for t, co in config.companies().items():
-        try:
-            filings = edgar.manifest(t)
-        except SystemExit:
-            filings = []
-        name, rows = _latest_eval_rows(t)
-        graded = [r for r in rows.values() if r["correct"] is not None]
-        out.append({
-            **co,
-            "filings": [{k: f[k] for k in ("doc_id", "form", "period", "filing_date", "url")} for f in filings],
-            "periods": checklist.periods(t) if filings else None,
-            "eval": {"run": name, "graded": len(graded), "correct": sum(r["correct"] for r in graded)} if rows else None,
-            "situation": co.get("why", ""),
-            "number_check": _number_check_summary(t),
-            "has_run": _latest_run(t) is not None,
-            "has_memo": any(config.RUNS.glob(f"{t}_*_memo.json")),
-        })
-    return out
+def _qs() -> list[dict]:
+    return checklist.load()
 
 
-def checklist_view(ticker: str) -> dict:
-    """Answers for every checklist question: from the latest full run, else from the latest eval."""
-    qs = checklist.load()
-    eval_name, eval_rows = _latest_eval_rows(ticker)
-    run = _latest_run(ticker)
-    number_check = {}
-    if run:
-        data = json.loads(run.read_text())
-        answers = {a["qid"]: a for a in data["answers"]}
-        number_check = {i["qid"]: i for i in data["meta"].get("number_check", {}).get("items", [])}
-        source = {"kind": "run", "name": run.stem, "model": data["meta"]["model"],
-                  "cost_usd": data["meta"]["cost_usd"]}
-    else:
-        answers = eval_rows
-        source = {"kind": "eval", "name": eval_name, "model": next(iter(eval_rows.values()))["model"] if eval_rows else None}
-    items = []
-    for q in qs:
-        a = answers.get(q["id"])
-        g = eval_rows.get(q["id"])
-        items.append({
-            "qid": q["id"], "category": q["category"], "question": q["question"], "answer_type": q["answer_type"],
-            "answer": a and {k: a.get(k) for k in ("status", "answer", "value", "unit", "period", "confidence")},
-            "citations": _slim_citations(a["citations"]) if a else [],
-            "graded": (g and {"correct": g["correct"], "grade": g["grade"], "supported": g["supported"],
-                              "expected": g["expected"], "judge_reason": g.get("judge_reason", ""),
-                              "eval_run": eval_name, "source": "golden"})
-                      or (q["id"] in number_check and {"correct": number_check[q["id"]]["match"], "grade": "numeric",
-                                                        "supported": None, "expected": number_check[q["id"]]["expected"],
-                                                        "judge_reason": "", "eval_run": None, "source": "sec_data"})
-                      or None,
-        })
-    return {"ticker": ticker, "source": source, "items": items}
+def _today() -> str:
+    return date.today().isoformat()
 
 
-def memo_view(ticker: str) -> dict | None:
-    memos = sorted(config.RUNS.glob(f"{ticker}_*_memo.json"))
-    if not memos:
+# ---------------------------------------------------------------- ledgers
+
+def _ledger(path) -> dict:
+    return store.read_json(path, {}) or {}
+
+
+def _charge(path, usd: float) -> None:
+    with _lock:
+        led = _ledger(path)
+        led[_today()] = round(led.get(_today(), 0.0) + usd, 6)
+        store.write_json(path, led)
+
+
+def usage_view() -> dict:
+    ask, run = _ledger(ASK_LEDGER), _ledger(RUN_LEDGER)
+    days = [{"date": d, "questions_usd": round(ask.get(d, 0.0), 4), "screening_usd": round(run.get(d, 0.0), 4)}
+            for d in sorted(set(ask) | set(run), reverse=True)]
+    by_company = []
+    for t in store.coverage():
+        run_meta = (store.get(t, "run.json") or {}).get("meta", {})
+        memo_meta = (store.get(t, "memo.json") or {}).get("meta", {})
+        pres = store.get(t, "present.json") or {}
+        job = store.get(t, "job.json") or {}
+        screening = job.get("cost_usd")
+        if screening is None:  # imported runs: what the run and memo recorded
+            screening = (run_meta.get("cost_usd") or 0) + (memo_meta.get("cost_usd") or 0) + (pres.get("cost_usd") or 0)
+        qs = store.read_jsonl(store.path(t, "questions.jsonl"))
+        by_company.append({"ticker": t, "name": (store.get(t, "company.json") or {}).get("name", t),
+                           "screening_usd": round(screening, 4), "questions": len(qs),
+                           "questions_usd": round(sum(q.get("cost_usd", 0) for q in qs), 4)})
+    return {"days": days, "total_usd": round(sum(ask.values()) + sum(run.values()), 4),
+            "caps": {"questions": {"today_usd": round(ask.get(_today(), 0.0), 4), "cap_usd": ASK_MAX_USD_PER_DAY,
+                                   "estimate_usd": ASK_ESTIMATE_USD},
+                     "screening": {"today_usd": round(run.get(_today(), 0.0), 4), "cap_usd": RUN_MAX_USD_PER_DAY,
+                                   "per_run_limit_usd": RUN_LIMIT_USD}},
+            "by_company": by_company}
+
+
+# ---------------------------------------------------------------- company context
+
+def _manifest(t: str) -> list[dict]:
+    try:
+        return edgar.manifest(t)
+    except SystemExit:
+        return []
+
+
+def _financials(t: str, co: dict) -> dict:
+    p = config.RAW / t / "companyfacts.json"
+    return _cached(("fin", t), p, lambda: financials.table(
+        json.loads(p.read_text()), co["fiscal_year_end"], co["cik"])) or {"years": [], "rows": []}
+
+
+def _company(t: str) -> dict:
+    co = store.get(t, "company.json") or {}
+    if not co.get("cik"):
+        reg = config.companies().get(t, {})
+        co = {**reg, **co}
+    return {"ticker": t, "name": co.get("name", t), **co}
+
+
+def _ctx(t: str) -> dict:
+    run = store.get(t, "run.json") or {}
+    rows = {r["qid"]: r for r in run.get("answers", [])}
+    nc = {i["qid"]: i for i in (run.get("meta", {}).get("number_check") or {}).get("items", [])}
+    return {"company": _company(t), "run": run, "rows": rows, "sec": nc,
+            "present": (store.get(t, "present.json") or {}).get("items", {}),
+            "ann": store.get(t, "annotations.json", {}) or {},
+            "docs": findings.doc_meta(_manifest(t)), "qs": _qs()}
+
+
+def _finding_rows(ctx: dict) -> list[dict]:
+    return [findings.finding_row(q, ctx["rows"].get(q["id"]), ctx["present"].get(q["id"]), ctx["sec"].get(q["id"]),
+                                 ctx["ann"].get(q["id"]), ctx["docs"]) for q in findings.visible(ctx["qs"])]
+
+
+def _job_view(t: str) -> dict | None:
+    job = _running.get(t) or store.get(t, "job.json")
+    if not job or job.get("state") == "done":
         return None
-    m = json.loads(memos[-1].read_text())
-    src = config.RUNS / m["meta"]["source_run"]
-    answers = {a["qid"]: a for a in json.loads(src.read_text())["answers"]} if src.exists() else {}
-    refs = {r for s in m["memo"]["sections"] for x in s["sentences"] for r in x["refs"]}
-    sources = {qid: {"question": answers[qid]["question"], "answer": answers[qid]["answer"],
-                     "citations": _slim_citations([c for c in answers[qid]["citations"] if c["verified"]])}
-               for qid in refs if qid in answers}
-    return {"ticker": ticker, "name": memos[-1].stem, "meta": m["meta"], "memo": m["memo"], "check": m["check"],
-            "sources": sources}
+    label, frac = STAGES.get(job.get("stage"), ("Working", 0.0))
+    if job.get("stage") == "answer" and job.get("total"):
+        label = f"Answering, {job.get('done', 0)} of {job['total']}"
+        frac = 0.2 + 0.6 * job.get("done", 0) / job["total"]
+    return {**{k: job.get(k) for k in ("state", "stage", "done", "total", "error", "started", "cost_usd")},
+            "label": label, "fraction": round(frac, 3)}
 
 
-def evals_view() -> dict:
-    runs = [{"name": r["name"], "timestamp": r["timestamp"], "label": r["label"], "note": r["note"],
-             "tickers": r["tickers"], "model": r["model"], "effort": r["effort"], "k": r["k"],
-             "expand": r.get("expand", 0), "metrics": r["metrics"]} for r in _eval_results()]
-    memo_checks = []
-    for p in sorted(config.RESULTS.glob("*_memo_*.json")):
-        r = json.loads(p.read_text())
-        memo_checks.append({"name": p.stem, "ticker": p.stem.rsplit("_", 1)[-1], "note": r.get("note", ""),
-                            "unsupported": len(r["check"]["unsupported"]), "sentences": r["check"]["n_sentences"],
-                            "rate": r["check"]["unsupported_rate"]})
-    return {"runs": runs, "memo_checks": memo_checks}
+def _state(t: str) -> str:
+    job = _job_view(t)
+    if job and job["state"] == "running":
+        return "processing"
+    if store.get(t, "run.json"):
+        return "ready"
+    return "failed"
 
 
-def eval_detail(name: str) -> dict | None:
-    path = config.RESULTS / f"{name}.json"
-    if not path.exists() or path.parent != config.RESULTS:
+def _latest_filing(manifest: list[dict]) -> dict | None:
+    if not manifest:
         return None
-    r = json.loads(path.read_text())
-    rows = [{k: row.get(k) for k in ("id", "ticker", "qid", "question", "category", "grade", "status", "answer",
-                                     "value", "period", "correct", "supported", "judge_reason", "expected",
-                                     "value_in_context")} | {"citations": _slim_citations(row["citations"])}
-            for row in r.get("rows", [])]
-    return {k: r[k] for k in ("timestamp", "label", "note", "tickers", "model", "metrics")} | {"name": name, "rows": rows}
+    d = max(manifest, key=lambda d: d["filing_date"])
+    return {"form": d["form"], "period": d["period"], "date": d["filing_date"], "url": d["url"]}
 
 
-_QUOTE_MAP = str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-"})
+def coverage_row(t: str) -> dict:
+    co = _company(t)
+    state = _state(t)
+    man = _manifest(t)
+    fin = financials.latest(_financials(t, co)) if co.get("cik") else {}
+    row = {"ticker": t, "name": co.get("name", t), "state": state, "job": _job_view(t),
+           "fy": fin.get("fy"), "fy_end": financials.fye_label(co.get("fiscal_year_end", "")),
+           "revenue": fin.get("revenue"), "growth": fin.get("growth"), "gross_margin": fin.get("gross_margin"),
+           "op_margin": fin.get("op_margin"), "fcf_margin": fin.get("fcf_margin"),
+           "latest_filing": _latest_filing(man), "updated": co.get("updated") or co.get("added"), "findings": None}
+    if state == "ready":
+        c = findings.counts(_finding_rows(_ctx(t)))
+        row["findings"] = {**c, "answered": c["total"] - c["not_disclosed"]}
+    return row
 
 
-def _norm_index(text: str) -> tuple[str, list[int]]:
-    """Lowercase, unify quotes/dashes, drop whitespace, '$' and '|'; keep a map back to original offsets."""
-    chars, idx = [], []
-    for i, ch in enumerate(text.translate(_QUOTE_MAP)):
-        if ch.isspace() or ch in "$|":
-            continue
-        chars.append(ch.lower())
-        idx.append(i)
-    return "".join(chars), idx
+def coverage_view() -> dict:
+    rows = [coverage_row(t) for t in store.coverage()]
+    counts = {"all": len(rows), "ready": sum(r["state"] == "ready" for r in rows),
+              "processing": sum(r["state"] == "processing" for r in rows),
+              "failed": sum(r["state"] == "failed" for r in rows),
+              "review": sum(bool(r["findings"] and r["findings"]["review"]) for r in rows)}
+    return {"companies": rows, "counts": counts, "busy": _busy_ticker()}
 
 
-def quote_spans(text: str, quote: str) -> list[tuple[int, int]]:
-    """Where a (possibly '...'-elided) quote sits in the text, as original-offset spans."""
-    norm, idx = _norm_index(text)
-    spans, pos = [], 0
-    for frag in re.split(r"\.\.\.|…", quote):
-        f, _ = _norm_index(frag)
-        if len(f) < 3:
-            continue
-        i = norm.find(f, pos)
-        if i < 0:
-            return []
-        spans.append((idx[i], idx[i + len(f) - 1] + 1))
-        pos = i + len(f)
-    return spans
+def company_view(t: str) -> dict:
+    co = _company(t)
+    man = _manifest(t)
+    fin = financials.latest(_financials(t, co)) if co.get("cik") else {}
+    ctx = _ctx(t)
+    figures = []
+    if fin.get("revenue") is not None:
+        figures.append({"key": "revenue", "label": f"Revenue, {fin['fy']}", "value": fin["revenue"], "kind": "usd",
+                        "sub": fin.get("growth"), "sub_kind": "pct_change"})
+    for key, label in (("gross_margin", "Gross margin"), ("op_income", "Operating income")):
+        if fin.get(key) is not None:
+            figures.append({"key": key, "label": label, "value": fin[key], "kind": "pct" if "margin" in key else "usd"})
+    if fin.get("fcf") is not None:
+        figures.append({"key": "fcf", "label": "Free cash flow", "value": fin["fcf"], "kind": "usd",
+                        "sub": fin.get("fcf_margin"), "sub_kind": "pct"})
+    if fin.get("cash") is not None:
+        figures.append({"key": "cash", "label": "Cash", "value": fin["cash"], "kind": "usd"})
+    for qid, label, kind in (("debt_instruments", "Debt principal", "usd"), ("emp_count", "Employees", "count")):
+        r = ctx["rows"].get(qid)
+        if r and r.get("status") == "answered" and isinstance(r.get("parsed_value"), (int, float)):
+            figures.append({"key": qid, "label": label, "value": r["parsed_value"], "kind": kind, "qid": qid})
+    rows = _finding_rows(ctx)
+    return {"ticker": t, "name": co.get("name", t), "cik": co.get("cik"), "sic": co.get("sic", ""),
+            "fy_end": financials.fye_label(co.get("fiscal_year_end", "")), "fy": fin.get("fy"),
+            "filings": len(man), "latest_filing": _latest_filing(man),
+            "latest_10k": _latest_filing([d for d in man if d["form"] == "10-K"]),
+            "updated": co.get("updated") or co.get("added"), "state": _state(t), "job": _job_view(t),
+            "figures": figures, "counts": findings.counts(rows),
+            "has_memo": bool(store.get(t, "memo.json")),
+            "questions": len(store.read_jsonl(store.path(t, "questions.jsonl")))}
 
 
-def _segments(text: str, start: int, spans: list[tuple[int, int, int]]) -> list[dict]:
-    """Split one line (starting at `start` in the chunk) into runs; q = index of the quote marking it."""
-    end = start + len(text)
-    cuts = sorted({start, end} | {max(start, min(end, x)) for s in spans for x in s[:2]})
-    out = []
-    for a, b in zip(cuts, cuts[1:]):
-        if a == b:
-            continue
-        q = next((qi for s, e, qi in spans if s < b and e > a), None)
-        if out and out[-1]["q"] == q:
-            out[-1]["t"] += text[a - start:b - start]
-        else:
-            out.append({"t": text[a - start:b - start], "m": q is not None, "q": q})
-    return out
+def findings_view(t: str) -> dict:
+    rows = _finding_rows(_ctx(t))
+    return {"groups": findings.group_rows(rows), "counts": findings.counts(rows)}
 
 
-def passage_view(ticker: str, chunk_id: str, quotes: list[str]) -> dict | None:
-    ix = _index(ticker)
+def _visible_q(qid: str) -> dict:
+    q = next((q for q in findings.visible(_qs()) if q["id"] == qid), None)
+    if not q:
+        raise KeyError(qid)
+    return q
+
+
+def finding_view(t: str, qid: str) -> dict:
+    ctx = _ctx(t)
+    q = _visible_q(qid)
+    return findings.finding_detail(q, ctx["rows"].get(qid), ctx["present"].get(qid), ctx["sec"].get(qid),
+                                   ctx["ann"].get(qid), ctx["docs"])
+
+
+def _source_citations(t: str, source: str) -> list[dict]:
+    """The citation list behind a source reference: finding:<qid>, memo:<n> (footnote) or question:<id>."""
+    kind, _, ref = source.partition(":")
+    if kind == "finding":
+        _visible_q(ref)
+        return (_ctx(t)["rows"].get(ref) or {}).get("citations", [])
+    if kind == "memo":
+        m = store.get(t, "memo.json")
+        if not m:
+            raise KeyError(source)
+        ctx = _ctx(t)
+        mv = findings.memo_view(m, list(ctx["rows"].values()), {q["id"]: q for q in ctx["qs"]})
+        note = next((n for n in mv["notes"] if str(n["n"]) == ref), None)
+        if not note:
+            raise KeyError(source)
+        return ctx["rows"][note["qid"]].get("citations", [])
+    if kind == "question":
+        q = next((q for q in store.read_jsonl(store.path(t, "questions.jsonl")) if q.get("id") == ref), None)
+        if not q:
+            raise KeyError(source)
+        return q.get("citations", [])
+    raise KeyError(source)
+
+
+def passage_view(t: str, chunk_id: str, source: str) -> dict:
+    ix = _index(t)
     c = ix.by_id.get(chunk_id)
-    if not c:
-        return None
-    text = c["text"]
-    spans = [(s, e, qi) for qi, q in enumerate(quotes) for s, e in quote_spans(text, q)]
-    blocks, pos, table = [], 0, None
-    for line in text.split("\n"):
-        start = pos
-        pos += len(line) + 1
-        if line == "[TABLE]":
-            table = {"type": "table", "rows": []}
-            blocks.append(table)
-            continue
-        if line == "[/TABLE]":
-            table = None
-            continue
-        if not line.strip():
-            continue
-        if table is not None:
-            cells, cpos = [], start
-            for cell in line.split(" | "):
-                cells.append(_segments(cell, cpos, spans))
-                cpos += len(cell) + 3
-            table["rows"].append(cells)
-        else:
-            blocks.append({"type": "p", "segments": _segments(line, start, spans)})
-    base, _, n = chunk_id.rpartition("#")
-    prev_id, next_id = f"{base}#{int(n) - 1:03d}", f"{base}#{int(n) + 1:03d}"
+    if not c or not chunk_id.startswith(t + "_"):
+        raise KeyError(chunk_id)
+    cits = _source_citations(t, source)
+    quotes = [(i + 1, x["quote"]) for i, x in enumerate(cits) if x.get("chunk_id") == chunk_id]
+    p = findings.passage(c, quotes)
+    neighbors = {n["chunk_id"] for n in ix.neighbors(chunk_id)}
+    prev_id = next((n for n in neighbors if n < chunk_id), None)
+    next_id = next((n for n in neighbors if n > chunk_id), None)
     return {**{k: c[k] for k in ("chunk_id", "doc_id", "form", "period", "filing_date", "heading", "subheading", "url")},
-            "blocks": blocks, "found": bool(spans),
-            "prev_id": prev_id if prev_id in ix.by_id else None, "next_id": next_id if next_id in ix.by_id else None}
+            "form_label": findings.FORM_LABELS.get(c["form"], c["form"]), **p,
+            "quotes_here": [n for n, _ in quotes], "prev_chunk": prev_id, "next_chunk": next_id}
 
 
-def search_view(ticker: str, q: str, form: str | None) -> list[dict]:
-    hits = _index(ticker).search(q, k=10, forms=[form] if form else None)
-    return [{"score": round(h.score, 1), **{k: h.chunk[k] for k in ("chunk_id", "doc_id", "form", "period",
-                                                                     "heading", "subheading", "url", "text")}}
-            for h in hits]
+def memo_api(t: str) -> dict | None:
+    m = store.get(t, "memo.json")
+    if not m:
+        return None
+    ctx = _ctx(t)
+    return findings.memo_view(m, list(ctx["rows"].values()), {q["id"]: q for q in ctx["qs"]})
 
 
-def _manual_lines() -> list[str]:
-    return golden.MANUAL.read_text().splitlines()
+def filings_view(t: str) -> list[dict]:
+    return sorted([{k: d.get(k) for k in ("doc_id", "form", "period", "report_date", "filing_date", "url")}
+                   | {"form_label": findings.FORM_LABELS.get(d["form"], d["form"])} for d in _manifest(t)],
+                  key=lambda d: d["filing_date"], reverse=True)
 
 
-def golden_view() -> list[dict]:
-    qs = checklist.by_id()
-    out = []
-    for line in _manual_lines():
-        if line.strip() and not line.startswith("//"):
-            it = json.loads(line)
-            out.append({**it, "question": qs[it["qid"]]["question"], "category": qs[it["qid"]]["category"]})
-    return out
+def export_findings_csv(t: str) -> str:
+    ctx = _ctx(t)
+    details = [findings.finding_detail(q, ctx["rows"].get(q["id"]), ctx["present"].get(q["id"]), ctx["sec"].get(q["id"]),
+                                       ctx["ann"].get(q["id"]), ctx["docs"]) for q in findings.visible(ctx["qs"])]
+    return findings.findings_csv(t, details)
 
 
-def golden_verify(item_id: str, verified: bool) -> dict:
-    lines, found = [], None
-    for line in _manual_lines():
-        if line.strip() and not line.startswith("//"):
-            it = json.loads(line)
-            if it["id"] == item_id:
-                it["verified"] = "human" if verified else "claude-draft"
-                line, found = json.dumps(it, ensure_ascii=False), it
-        lines.append(line)
-    if not found:
-        raise KeyError(item_id)
-    golden.MANUAL.write_text("\n".join(lines) + "\n")
-    from .evaluate import eval_tickers
-    golden.build(eval_tickers(final=True))  # keep golden.jsonl in sync (case studies only)
-    (config.ROOT / "golden" / "REVIEW.md").write_text(golden.review_sheet())
-    return {"id": item_id, "verified": found["verified"]}
+def export_memo_md(t: str) -> str | None:
+    mv = memo_api(t)
+    if not mv:
+        return None
+    return findings.memo_markdown(_company(t)["name"], t, mv, list(_ctx(t)["rows"].values()))
 
 
-# ---------------------------------------------------------------- paid: ask
+# ---------------------------------------------------------------- annotations
 
-def _ledger() -> dict:
+def _now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
+def set_note(t: str, qid: str, text: str) -> dict:
+    _visible_q(qid)
+    text = text.strip()[:4000]
+    store.annotate(t, qid, note=text or None, note_at=_now() if text else None)
+    return finding_view(t, qid)
+
+
+def set_flag(t: str, qid: str, flagged: bool) -> dict:
+    _visible_q(qid)
+    store.annotate(t, qid, flagged=True if flagged else None, flagged_at=_now() if flagged else None)
+    return finding_view(t, qid)
+
+
+def set_reviewed(t: str, qid: str, reviewed: bool) -> dict:
+    _visible_q(qid)
+    store.annotate(t, qid, reviewed_at=_now() if reviewed else None)
+    return finding_view(t, qid)
+
+
+# ---------------------------------------------------------------- questions (paid)
+
+def questions_view(t: str) -> dict:
+    qs = store.read_jsonl(store.path(t, "questions.jsonl"))
+    docs = findings.doc_meta(_manifest(t))
+    out = [{**q, "citations": [findings.citation_view(i, c, docs) for i, c in enumerate(q.get("citations", []))]}
+           for q in qs]
+    led = _ledger(ASK_LEDGER)
+    return {"questions": out, "spend": {"today_usd": round(led.get(_today(), 0.0), 4), "cap_usd": ASK_MAX_USD_PER_DAY,
+                                        "estimate_usd": ASK_ESTIMATE_USD}}
+
+
+def ask(t: str, question: str, max_usd: float) -> dict:
+    if _state(t) != "ready":
+        raise RuntimeError("Questions open once this company's screening has finished.")
+    if max_usd + 1e-9 < ASK_ESTIMATE_USD:
+        raise ValueError(f"Confirm the estimated cost (${ASK_ESTIMATE_USD:.2f}) to ask.")
+    with _lock:
+        spent = _ledger(ASK_LEDGER).get(_today(), 0.0)
+        if spent + ASK_ESTIMATE_USD > ASK_MAX_USD_PER_DAY:
+            raise PermissionError(f"Today's question budget is used (${spent:.2f} of ${ASK_MAX_USD_PER_DAY:.2f}). "
+                                  "Raise UI_MAX_USD_PER_DAY in .env to ask more today.")
+    q = {"id": "adhoc", "category": "Ad hoc", "question": question[:500], "answer_type": "text",
+         "period": "current", "where": {}}
+    meter = llm.CostMeter(limit=ASK_LIMIT_USD)
     try:
-        return json.loads(SPEND_LEDGER.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+        r = answer.answer_question(t, q, _index(t), meter)
+    finally:
+        _charge(ASK_LEDGER, meter.cost())
+    rec = {"id": uuid.uuid4().hex[:10], "asked_at": _now(), "question": q["question"],
+           **{k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence", "error")},
+           "citations": [{k: c.get(k) for k in ("chunk_id", "quote", "verified", "url", "doc_id", "section")}
+                         for c in r["citations"]],
+           "cost_usd": round(meter.cost(), 4), "model": r["model"]}
+    store.append_jsonl(store.path(t, "questions.jsonl"), rec)
+    return questions_view(t)
 
 
-def spend_view() -> dict:
-    today = date.today().isoformat()
-    led = _ledger()
-    return {"today_usd": round(led.get(today, 0.0), 4), "cap_usd": UI_MAX_USD_PER_DAY,
-            "total_usd": round(sum(led.values()), 4), "ask_estimate_usd": ASK_ESTIMATE_USD}
+# ---------------------------------------------------------------- screening jobs (paid)
+
+def _busy_ticker() -> str | None:
+    return next((t for t, j in _running.items() if j.get("state") == "running"), None)
 
 
-def ask(ticker: str, question: str) -> dict:
-    today = date.today().isoformat()
-    with _lock:
-        led = _ledger()
-        if led.get(today, 0.0) + ASK_ESTIMATE_USD > UI_MAX_USD_PER_DAY:
-            raise PermissionError(f"Daily UI budget reached (${led.get(today, 0.0):.2f} of "
-                                  f"${UI_MAX_USD_PER_DAY:.2f}). Raise UI_MAX_USD_PER_DAY in .env to continue.")
-    qs = checklist.by_id()
-    q = qs.get(question) or {"id": "adhoc", "category": "Ad hoc", "question": question[:500],
-                             "answer_type": "text", "period": "current", "where": {}}
-    meter = llm.CostMeter(limit=0.25)
-    r = answer.answer_question(ticker, q, _index(ticker), meter)
-    cost = meter.cost()
-    with _lock:
-        led = _ledger()
-        led[today] = led.get(today, 0.0) + cost
-        SPEND_LEDGER.parent.mkdir(parents=True, exist_ok=True)
-        SPEND_LEDGER.write_text(json.dumps(led, indent=1))
-    return {"question": q["question"], "cost_usd": round(cost, 4),
-            **{k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence", "error")},
-            "citations": _slim_citations(r["citations"]), "spend": spend_view()}
+def estimate(t: str | None) -> dict:
+    """Cost of what's left to do for this company (a fresh screening if nothing is stored)."""
+    total = len(_qs())
+    done, need_present, need_memo = 0, True, True
+    if t and store.in_coverage(t):
+        if store.get(t, "run.json"):
+            done = total
+        else:
+            done = len(pipeline.load_partial(store.path(t, "answers.partial.jsonl")))
+        need_present = not store.get(t, "present.json")
+        need_memo = not store.get(t, "memo.json")
+    usd = PER_ANSWER_USD * (total - done) + (PRESENT_USD if need_present else 0) + (MEMO_USD if need_memo else 0)
+    left = (total - done) / total
+    minutes = "4-6" if done == 0 else ("1-2" if left < 0.3 else "2-4")
+    return {"usd": round(usd, 2), "minutes": minutes, "answers_done": done, "answers_total": total}
 
 
-# ---------------------------------------------------------------- paid: run a new company's checklist
-
-RUN_LEDGER = config.DATA / "run_spend.json"
-RUN_MAX_USD_PER_DAY = float(os.environ.get("RUN_MAX_USD_PER_DAY", "3.00"))
-RUN_LIMIT_USD = 2.50  # hard stop for a single company run
-STAGES = ["register", "fetch", "parse", "index", "answer", "memo", "done"]
-_jobs: dict[str, dict] = {}
-
-
-def _run_ledger() -> dict:
-    try:
-        return json.loads(RUN_LEDGER.read_text())
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+def preview_view(t: str) -> dict:
+    p = pipeline.preview(t)
+    led = _ledger(RUN_LEDGER).get(_today(), 0.0)
+    ins = store.in_coverage(p["ticker"])
+    return {**{k: p[k] for k in ("ticker", "name", "cik", "sic", "filings", "eligible", "reason")},
+            "fy_end": financials.fye_label(p.get("fiscal_year_end", "")), "in_coverage": ins,
+            "state": _state(p["ticker"]) if ins else None,
+            "estimate": estimate(p["ticker"] if ins else None),
+            "cap": {"today_usd": round(led, 4), "cap_usd": RUN_MAX_USD_PER_DAY,
+                    "remaining_usd": round(max(0.0, RUN_MAX_USD_PER_DAY - led), 4)},
+            "busy": _busy_ticker()}
 
 
-def run_spend_view() -> dict:
-    led = _run_ledger()
-    return {"today_usd": round(led.get(date.today().isoformat(), 0.0), 4), "cap_usd": RUN_MAX_USD_PER_DAY,
-            "estimate_usd": pipeline.RUN_ESTIMATE_USD, "limit_usd": RUN_LIMIT_USD}
+def search_view(q: str) -> list[dict]:
+    cov = set(store.coverage())
+    return [{**r, "in_coverage": r["ticker"] in cov} for r in pipeline.search(q)]
 
 
-def runs_view() -> dict:
-    added = [c for c in config.companies().values() if c["split"] == "user"]
-    return {"spend": run_spend_view(), "jobs": list(_jobs.values()),
-            "companies": [{"ticker": c["ticker"], "name": c["name"], "added": c.get("added"),
-                           "has_run": _latest_run(c["ticker"]) is not None,
-                           "number_check": _number_check_summary(c["ticker"])} for c in added]}
+def _check_can_start(t: str, confirm_usd: float) -> dict:
+    est = estimate(t if store.in_coverage(t) else None)
+    if confirm_usd + 1e-9 < est["usd"]:
+        raise ValueError(f"Confirm the estimated cost (${est['usd']:.2f}) to start.")
+    spent = _ledger(RUN_LEDGER).get(_today(), 0.0)
+    if spent + est["usd"] > RUN_MAX_USD_PER_DAY:
+        raise PermissionError(f"Today's screening budget is used (${spent:.2f} of ${RUN_MAX_USD_PER_DAY:.2f}). "
+                              "Raise RUN_MAX_USD_PER_DAY in .env to screen more today.")
+    busy = _busy_ticker()
+    if busy:
+        raise Busy(f"{busy} is being screened. One company at a time; try again when it finishes.")
+    return est
 
 
-def start_run(ticker: str) -> dict:
-    t = ticker.upper()
-    with _lock:
-        if any(j["state"] == "running" for j in _jobs.values()):
-            raise RuntimeError("Another company is already running. Wait for it to finish.")
-        today = date.today().isoformat()
-        spent = _run_ledger().get(today, 0.0)
-        if spent + pipeline.RUN_ESTIMATE_USD > RUN_MAX_USD_PER_DAY:
-            raise PermissionError(f"Today's company-run budget is used (${spent:.2f} of ${RUN_MAX_USD_PER_DAY:.2f}). "
-                                  "Raise RUN_MAX_USD_PER_DAY in .env to run more today.")
-        known = config.companies().get(t)
-        if known and known["split"] != "user":
-            raise ValueError(f"{t} is one of the three case studies; its answers are already in the app.")
-        job = {"ticker": t, "name": known["name"] if known else t, "state": "running", "stage": "register",
-               "done": 0, "total": 40, "cost_usd": 0.0, "error": None, "started": datetime.now().isoformat(timespec="seconds")}
-        _jobs[t] = job
+def start(t: str, confirm_usd: float) -> dict:
+    t = t.upper()
+    if not store.valid_ticker(t):
+        raise KeyError(t)
+    with _job_lock:
+        if store.in_coverage(t):
+            raise RuntimeError(f"{t} is already in coverage.")
+        _check_can_start(t, confirm_usd)
+        p = pipeline.preview(t)  # free; EDGAR metadata only
+        if not p["eligible"]:
+            raise RuntimeError(p["reason"])
+        store.add(t)
+        store.put(t, "company.json", {"ticker": t, "name": p["name"], "cik": p["cik"],
+                                      "fiscal_year_end": p["fiscal_year_end"], "sic": p["sic"], "added": _today()})
+        return _launch(t)
+
+
+def retry(t: str, confirm_usd: float) -> dict:
+    with _job_lock:
+        if _state(t) == "ready" and store.get(t, "present.json") and store.get(t, "memo.json"):
+            raise RuntimeError(f"{t} is already screened.")
+        _check_can_start(t, confirm_usd)
+        return _launch(t)
+
+
+def _launch(t: str) -> dict:
+    prev = store.get(t, "job.json") or {}
+    job = {"state": "running", "stage": "queued", "done": 0, "total": len(_qs()), "error": None,
+           "started": _now(), "cost_usd": round(prev.get("cost_usd") or 0.0, 4)}
+    _running[t] = job
+    store.put(t, "job.json", job)
     threading.Thread(target=_run_job, args=(t,), daemon=True).start()
-    return job
+    return coverage_row(t)
 
 
 def _run_job(t: str) -> None:
-    job = _jobs[t]
+    job = _running[t]
     meter = llm.CostMeter(limit=RUN_LIMIT_USD)
+    base_cost = job["cost_usd"]
+    last_write = [0.0]
+
+    def save(force=True):
+        job["cost_usd"] = round(base_cost + meter.cost(), 4)
+        if force or time.time() - last_write[0] > 1.0:
+            last_write[0] = time.time()
+            store.put(t, "job.json", job)
 
     def stage(s):
         job["stage"] = s
+        save()
+
+    work = store.path(t, ".work")
     try:
+        stage("register")
         entry = pipeline.register(t)
-        job["name"] = entry["name"]
+        co = store.get(t, "company.json") or {}
+        store.put(t, "company.json", {**co, "name": entry["name"], "cik": entry["cik"],
+                                      "fiscal_year_end": entry["fiscal_year_end"]})
         pipeline.build(t, stage=stage)
         with _lock:
             _indexes.pop(t, None)
-        stage("answer")
-        path = pipeline.run_checklist(t, meter, progress=lambda d, n: job.update(done=d, total=n, cost_usd=round(meter.cost(), 4)))
-        stage("memo")
-        memo.run(t, path, memo.DEFAULT_MODEL, memo.DEFAULT_EFFORT, do_check=True, log=False, meter=meter)
-        stage("done")
+        qs = _qs()
+        run_path = store.path(t, "run.json")
+        if not store.get(t, "run.json"):
+            stage("answer")
+            work.mkdir(parents=True, exist_ok=True)
+
+            def progress(d, n):
+                job.update(done=d, total=n)
+                save(force=False)
+            out = pipeline.run_checklist(t, meter, progress=progress, out_dir=work,
+                                         partial=store.path(t, "answers.partial.jsonl"))
+            with store.lock:
+                os.replace(out, run_path)
+            store.path(t, "answers.partial.jsonl").unlink(missing_ok=True)
+        rows = store.get(t, "run.json")["answers"]
+        if not store.get(t, "present.json"):
+            stage("present")
+            before = meter.cost()
+            pres = present.present_all(qs, rows, meter)
+            store.put(t, "present.json", {**pres, "cost_usd": round(meter.cost() - before, 4), "at": _now()})
+        if not store.get(t, "memo.json"):
+            stage("memo")
+            work.mkdir(parents=True, exist_ok=True)
+            res = memo.run(t, run_path, memo.DEFAULT_MODEL, memo.DEFAULT_EFFORT, do_check=True, log=False,
+                           meter=meter, out_dir=work)
+            store.put(t, "memo.json", {"meta": res["meta"], "memo": res["memo"], "check": res["check"]})
+        store.put(t, "company.json", {**(store.get(t, "company.json") or {}), "updated": _today()})
         job["state"] = "done"
-    except BaseException as e:  # SystemExit from a limit, parser errors, network errors: report, don't crash
+        stage("done")
+    except BaseException as e:  # SystemExit from a limit, parser and network errors: report, don't crash
         job["state"] = "failed"
         job["error"] = str(e) or e.__class__.__name__
     finally:
-        job["cost_usd"] = round(meter.cost(), 4)
+        _charge(RUN_LEDGER, meter.cost())
+        shutil.rmtree(work, ignore_errors=True)
+        try:
+            save()
+        except KeyError:  # removed while running
+            pass
+        _running.pop(t, None)
+
+
+def remove(t: str) -> dict:
+    with _job_lock:
+        if _busy_ticker() == t:
+            raise Busy(f"{t} is being screened; wait for it to finish before removing it.")
+        store.remove(t)
         with _lock:
-            led = _run_ledger()
-            today = date.today().isoformat()
-            led[today] = led.get(today, 0.0) + meter.cost()
-            RUN_LEDGER.parent.mkdir(parents=True, exist_ok=True)
-            RUN_LEDGER.write_text(json.dumps(led, indent=1))
+            _indexes.pop(t, None)
+    return coverage_view()
+
+
+def recover_interrupted() -> None:
+    """A job left 'running' by a previous server process was interrupted; mark it so it can be resumed."""
+    for t in store.coverage():
+        job = store.get(t, "job.json")
+        if job and job.get("state") == "running":
+            store.put(t, "job.json", {**job, "state": "failed",
+                                      "error": "Interrupted: the app was closed while this company was processing."})
 
 
 # ---------------------------------------------------------------- HTTP
+
+_ROUTE_T = re.compile(r"^[A-Za-z][A-Za-z0-9.\-]{0,9}$")
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "filing-room"
 
     def log_message(self, fmt, *args):  # quiet: only log errors
-        if args and str(args[1]).startswith(("4", "5")):
+        if len(args) > 1 and str(args[1]).startswith(("4", "5")):
             super().log_message(fmt, *args)
 
     def _host_ok(self) -> bool:
         port = self.server.server_address[1]
         return self.headers.get("Host", "") in (f"127.0.0.1:{port}", f"localhost:{port}")
 
-    def _send(self, status: int, body: bytes, ctype: str) -> None:
+    def _send(self, status: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
         self.send_response(status)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("X-Frame-Options", "DENY")
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
@@ -443,9 +611,15 @@ class Handler(BaseHTTPRequestHandler):
     def _error(self, status: int, msg: str) -> None:
         self._json({"error": msg}, status)
 
-    def _ticker(self, t: str) -> str | None:
-        t = t.upper()
-        return t if t in config.companies() else None
+    def _download(self, text: str, name: str, ctype: str) -> None:
+        self._send(200, text.encode(), ctype, {"Content-Disposition": f'attachment; filename="{name}"'})
+
+    def _company(self, seg: str) -> str:
+        """A ticker path segment that is in coverage, or KeyError."""
+        t = seg.upper()
+        if not _ROUTE_T.fullmatch(seg) or not store.in_coverage(t):
+            raise KeyError(seg)
+        return t
 
     def do_GET(self):
         if not self._host_ok():
@@ -453,48 +627,49 @@ class Handler(BaseHTTPRequestHandler):
         url = urlparse(self.path)
         parts = [unquote(p) for p in url.path.strip("/").split("/") if p]
         qs = parse_qs(url.query)
+        arg = lambda k, d="": qs.get(k, [d])[0]  # noqa: E731
         try:
             if not parts or parts[0] != "api":
                 return self._static(url.path)
-            route = parts[1:] if len(parts) > 1 else []
-            if route == ["companies"]:
-                return self._json(companies())
-            if route == ["evals"]:
-                return self._json(evals_view())
-            if route == ["spend"]:
-                return self._json(spend_view())
-            if route == ["golden"]:
-                return self._json(golden_view())
-            if route == ["runs"]:
-                return self._json(runs_view())
-            if route == ["sec-search"]:
-                return self._json(pipeline.search(qs.get("q", [""])[0]))
-            if len(route) == 2 and route[0] == "sec-company":
-                try:
-                    return self._json(pipeline.preview(route[1]))
-                except KeyError as e:
-                    return self._error(404, str(e).strip("'\""))
-            if len(route) == 2 and route[0] == "evals":
-                d = eval_detail(route[1])
-                return self._json(d) if d else self._error(404, "no such eval")
-            if len(route) == 2 and route[0] == "passage":
-                t = self._ticker(route[1])
-                cid = qs.get("id", [""])[0]
-                if not t or not cid.startswith(t + "_"):
-                    return self._error(404, "unknown passage")
-                p = passage_view(t, cid, qs.get("q", []))
-                return self._json(p) if p else self._error(404, "unknown passage")
-            if len(route) == 2 and route[0] in ("checklist", "memo", "search"):
-                t = self._ticker(route[1])
-                if not t:
-                    return self._error(404, "unknown ticker")
-                if route[0] == "checklist":
-                    return self._json(checklist_view(t))
-                if route[0] == "memo":
-                    m = memo_view(t)
-                    return self._json(m) if m else self._error(404, "no memo yet")
-                q = qs.get("q", [""])[0].strip()
-                return self._json(search_view(t, q, qs.get("form", [None])[0]) if q else [])
+            r = parts[1:]
+            if r == ["coverage"]:
+                return self._json(coverage_view())
+            if r == ["usage"]:
+                return self._json(usage_view())
+            if r == ["sec", "search"]:
+                return self._json(search_view(arg("q")))
+            if len(r) == 3 and r[:2] == ["sec", "preview"]:
+                if not _ROUTE_T.fullmatch(r[2]):
+                    raise KeyError(r[2])
+                return self._json(preview_view(r[2].upper()))
+            if len(r) >= 2 and r[0] == "companies":
+                t = self._company(r[1])
+                rest = r[2:]
+                if rest == []:
+                    return self._json(company_view(t))
+                if rest == ["financials"]:
+                    return self._json(_financials(t, _company(t)))
+                if rest == ["findings"]:
+                    return self._json(findings_view(t))
+                if len(rest) == 2 and rest[0] == "findings":
+                    return self._json(finding_view(t, rest[1]))
+                if rest == ["passage"]:
+                    return self._json(passage_view(t, arg("chunk"), arg("source")))
+                if rest == ["memo"]:
+                    m = memo_api(t)
+                    return self._json(m) if m else self._error(404, "No screening memo for this company yet.")
+                if rest == ["questions"]:
+                    return self._json(questions_view(t))
+                if rest == ["filings"]:
+                    return self._json(filings_view(t))
+                if rest == ["export", "findings.csv"]:
+                    return self._download(export_findings_csv(t), f"{t}-findings.csv", "text/csv; charset=utf-8")
+                if rest == ["export", "memo.md"]:
+                    md = export_memo_md(t)
+                    return self._download(md, f"{t}-screening-memo.md", "text/markdown; charset=utf-8") if md \
+                        else self._error(404, "No screening memo for this company yet.")
+            return self._error(404, "not found")
+        except KeyError:
             return self._error(404, "not found")
         except SystemExit as e:  # e.g. an index that hasn't been built
             return self._error(409, str(e))
@@ -509,51 +684,74 @@ class Handler(BaseHTTPRequestHandler):
             return self._error(413, "too large")
         try:
             body = json.loads(self.rfile.read(length) or b"{}")
-        except json.JSONDecodeError:
+            if not isinstance(body, dict):
+                raise ValueError
+        except ValueError:
             return self._error(400, "bad json")
-        parts = [unquote(p) for p in urlparse(self.path).path.strip("/").split("/") if p]
+        r = [unquote(p) for p in urlparse(self.path).path.strip("/").split("/") if p][1:]
+        num = lambda k: float(body.get(k) or 0)  # noqa: E731
         try:
-            if parts[:2] == ["api", "ask"] and len(parts) == 3:
-                t = self._ticker(parts[2])
-                if not t:
-                    return self._error(404, "unknown ticker")
-                question = str(body.get("question", "")).strip()
-                if not question:
-                    return self._error(400, "empty question")
-                return self._json(ask(t, question))
-            if parts[:2] == ["api", "runs"] and len(parts) == 3:
-                return self._json(start_run(parts[2]))
-            if parts[:2] == ["api", "golden"] and len(parts) == 4 and parts[3] == "verify":
-                return self._json(golden_verify(parts[2], bool(body.get("verified"))))
+            if r == ["companies"]:
+                return self._json(start(str(body.get("ticker", "")), num("confirm_usd")))
+            if len(r) >= 3 and r[0] == "companies":
+                t = self._company(r[1])
+                rest = r[2:]
+                if rest == ["retry"]:
+                    return self._json(retry(t, num("confirm_usd")))
+                if rest == ["remove"]:
+                    return self._json(remove(t))
+                if rest == ["questions"]:
+                    question = str(body.get("question", "")).strip()
+                    if not question:
+                        return self._error(400, "Type a question first.")
+                    return self._json(ask(t, question, num("max_usd")))
+                if len(rest) == 3 and rest[0] == "findings":
+                    qid, action = rest[1], rest[2]
+                    if action == "note":
+                        return self._json(set_note(t, qid, str(body.get("text", ""))))
+                    if action == "flag":
+                        return self._json(set_flag(t, qid, bool(body.get("flagged"))))
+                    if action == "review":
+                        return self._json(set_reviewed(t, qid, bool(body.get("reviewed"))))
             return self._error(404, "not found")
         except PermissionError as e:
             return self._error(402, str(e))
+        except Busy as e:
+            return self._error(409, str(e))
         except (RuntimeError, ValueError) as e:
             return self._error(409, str(e))
-        except KeyError as e:
-            return self._error(404, f"unknown id {e}")
+        except KeyError:
+            return self._error(404, "not found")
         except SystemExit as e:
             return self._error(409, str(e))
 
     def _static(self, path: str) -> None:
-        rel = "index.html" if path in ("", "/") else path.lstrip("/")
-        target = (UI_DIR / rel).resolve()
-        if UI_DIR.resolve() not in target.parents or not target.is_file():
-            target = UI_DIR / "index.html"  # single-page app: unknown paths get the shell
-        if not target.exists():
-            return self._error(404, "ui not built")
+        dist = WEB_DIST.resolve()
+        index = dist / "index.html"
+        if not index.exists():
+            return self._send(503, b"The app isn't built. Run: npm --prefix web install && npm --prefix web run build",
+                              "text/plain; charset=utf-8")
+        rel = path.lstrip("/")
+        target = (dist / rel).resolve() if rel else index
+        if dist not in target.parents or not target.is_file():
+            target = index  # single-page app: unknown paths get the shell
         self._send(HTTPStatus.OK, target.read_bytes(), CONTENT_TYPES.get(target.suffix, "application/octet-stream"))
 
 
 def serve(port: int = 8787, open_browser: bool = True) -> None:
-    llm.MAX_USD_PER_COMMAND = float("inf")  # long-lived process: per-job meter limits and daily ledgers apply instead
+    llm.MAX_USD_PER_COMMAND = float("inf")  # long-lived process: per-job limits and daily ledgers apply instead
+    if not (WEB_DIST / "index.html").exists():
+        print("The web app isn't built yet. Build it with:\n  npm --prefix web install && npm --prefix web run build")
+    recover_interrupted()
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     except OSError:
-        raise SystemExit(f"Port {port} is already in use (maybe the UI is already running?). Try ./fr ui --port {port + 1}")
+        raise SystemExit(f"Port {port} is already in use (maybe the app is already running?). Try ./fr ui --port {port + 1}")
     url = f"http://127.0.0.1:{port}/"
-    print(f"filing-room UI on {url}  (local only; Ctrl-C to stop)")
-    print(f"paid actions: Ask ${UI_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY), company runs ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)")
+    print(f"filing-room on {url}  (local only; Ctrl-C to stop)")
+    print(f"app data: {store.root()}")
+    print(f"paid actions: questions ${ASK_MAX_USD_PER_DAY:.2f}/day (UI_MAX_USD_PER_DAY), "
+          f"screenings ${RUN_MAX_USD_PER_DAY:.2f}/day (RUN_MAX_USD_PER_DAY)")
     if open_browser:
         webbrowser.open(url)
     try:

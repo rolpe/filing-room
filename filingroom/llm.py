@@ -12,6 +12,7 @@ from . import config  # noqa: F401  (loads .env so ANTHROPIC_API_KEY is visible)
 # $ per million tokens (input, output). Cache reads bill at 0.1x input, cache writes at 1.25x.
 PRICES = {
     "claude-haiku-4-5": (1.00, 5.00),
+    "claude-haiku-5-5": (0.10, 0.50),  # presentation pass (app)
     "claude-sonnet-5": (2.00, 10.00),
     "claude-opus-5": (5.00, 25.00),
     "claude-opus-5-5": (4.00, 20.00),

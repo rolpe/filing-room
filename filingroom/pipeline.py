@@ -6,6 +6,7 @@ numeric answers are checked automatically against the SEC's structured XBRL data
 """
 
 import json
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -123,31 +124,61 @@ def number_check(ticker: str, rows: list[dict]) -> dict:
     return {"checked": len(items), "matched": sum(i["match"] for i in items), "items": items}
 
 
+def load_partial(partial) -> dict[str, dict]:
+    """Answers already produced by an interrupted run (one JSON row per line); errors are not kept."""
+    rows = {}
+    if partial and partial.exists():
+        for line in partial.read_text().splitlines():
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # a line cut short when the process stopped
+            if r.get("status") != "error":
+                rows[r["qid"]] = r
+    return rows
+
+
 def run_checklist(ticker: str, meter: llm.CostMeter, *, model: str = answer.DEFAULT_MODEL,
                   effort: str | None = answer.DEFAULT_EFFORT, k: int = answer.DEFAULT_K,
-                  expand: int = answer.DEFAULT_EXPAND, workers: int = 6, progress=None):
-    """Answer all 40 questions, add the number check, write runs/<TICKER>_<stamp>.json/.md. Returns the json path."""
+                  expand: int = answer.DEFAULT_EXPAND, workers: int = 6, progress=None,
+                  out_dir=None, partial=None):
+    """Answer all 40 questions, add the number check, write <out_dir>/<TICKER>_<stamp>.json/.md (default runs/).
+
+    With `partial` (a .jsonl path), each answer is appended as it completes and answers already there are reused,
+    so a resumed run doesn't pay twice. Each question is answered independently, so reuse doesn't change any input.
+    Returns the json path."""
     ix = index.Index(ticker)
     qs = checklist.load()
-    done = 0
+    have = load_partial(partial)
+    done = sum(q["id"] in have for q in qs)
+    lock = threading.Lock()
+    if progress:
+        progress(done, len(qs))
 
     def one(q):
         nonlocal done
+        if q["id"] in have:
+            return have[q["id"]]
         r = answer.answer_question(ticker, q, ix, meter, model=model, effort=effort, k=k, expand=expand)
-        done += 1
-        if progress:
-            progress(done, len(qs))
+        with lock:
+            done += 1
+            if partial:
+                with open(partial, "a") as f:
+                    f.write(json.dumps(r) + "\n")
+            if progress:
+                progress(done, len(qs))
         return r
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         rows = list(pool.map(one, qs))
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
     meta = {"timestamp": stamp, "model": model, "cost_usd": meter.cost(), "n_filings": len(edgar.manifest(ticker)),
-            "usage": meter.summary(), "number_check": number_check(ticker, rows)}
-    config.RUNS.mkdir(exist_ok=True)
-    path = config.RUNS / f"{ticker}_{stamp}.json"
+            "usage": meter.summary(), "number_check": number_check(ticker, rows), "reused_answers": len(have)}
+    out_dir = out_dir or config.RUNS
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{ticker}_{stamp}.json"
     path.write_text(json.dumps({"meta": meta, "answers": rows}, indent=1))
-    (config.RUNS / f"{ticker}_{stamp}.md").write_text(report.checklist_md(ticker, rows, meta))
+    (out_dir / f"{ticker}_{stamp}.md").write_text(report.checklist_md(ticker, rows, meta))
     return path
 
 

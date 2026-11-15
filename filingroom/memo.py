@@ -144,16 +144,16 @@ def render_md(ticker: str, memo: dict, rows: list[dict], chk: dict | None, meta:
 
 
 def run(ticker: str, run_path, model: str, effort: str | None, do_check: bool = True, note: str = "",
-        log: bool = True, meter: llm.CostMeter | None = None) -> dict:
+        log: bool = True, meter: llm.CostMeter | None = None, out_dir=None) -> dict:
     data = json.loads(run_path.read_text())
     rows = data["answers"]
     meter = meter or llm.CostMeter()
     start = meter.cost()  # a shared meter (UI runs) already holds the answering cost
     memo = compose(ticker, rows, meter, model=model, effort=effort)
     chk = check(memo, rows, meter) if do_check else None
-    stamp = run_path.stem.split("_", 1)[1]
+    stamp = data["meta"].get("timestamp") or run_path.stem.split("_", 1)[1]
     meta = {"timestamp": stamp, "model": model, "source_run": run_path.name, "cost_usd": round(meter.cost() - start, 4)}
-    out = config.RUNS / f"{ticker}_{stamp}_memo"
+    out = (out_dir or config.RUNS) / f"{ticker}_{stamp}_memo"
     out.with_suffix(".json").write_text(json.dumps({"meta": meta, "memo": memo, "check": chk}, indent=1))
     out.with_suffix(".md").write_text(render_md(ticker, memo, rows, chk, meta))
     if chk and log:
