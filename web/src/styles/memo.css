@@ -1,0 +1,52 @@
+/* Screening memo: a document, with footnote-style citations that open the source panel */
+.memo-scroll { flex: 1; min-height: 0; min-width: 0; }
+.memo-work { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+.memo-work.solo { grid-template-columns: minmax(0, 1fr); }
+.memo-work:not(.solo) .memo-scroll { border-right: 1px solid var(--line); }
+.memo-doc { max-width: 720px; margin: 0 auto; padding: 18px var(--gutter) 56px; font: 15px/1.65 var(--serif); color: var(--filing-ink); font-variant-numeric: normal; }
+.memo-tools { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; font: var(--fs)/1.45 var(--sans); }
+.memo-tools .sp { flex: 1; }
+.memo-doc .kicker { margin: 0; font: 600 var(--fs-sm)/1.4 var(--sans); color: var(--ink-3); letter-spacing: .02em; }
+.memo-doc h1 { margin: 2px 0 6px; font: 650 24px/1.25 var(--sans); letter-spacing: -0.02em; color: var(--ink); }
+.memo-doc h1 .muted { font-weight: 500; }
+.memo-doc .byline { margin: 0 0 6px; font: var(--fs)/1.5 var(--sans); color: var(--ink-3); max-width: 64ch; }
+.memo-doc .flag-note { display: flex; gap: 6px; align-items: center; margin: 8px 0 0; padding: 6px 10px; border-radius: 6px; background: var(--warn-wash); color: #5c3104; font: var(--fs)/1.45 var(--sans); }
+.memo-doc h2 { margin: 26px 0 6px; font: 650 15px/1.4 var(--sans); color: var(--ink); }
+.memo-doc p { margin: 0 0 10px; }
+.memo-doc ul { margin: 0; padding-left: 20px; }
+.memo-doc li { margin: 0 0 4px; }
+.memo-doc .flagged { background: var(--warn-wash); box-decoration-break: clone; -webkit-box-decoration-break: clone; border-bottom: 1px dashed var(--warn); }
+.fn { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 3px; margin-left: 2px; border: 1px solid var(--line-strong); border-radius: 3px; background: var(--ground); font: 600 10px/1 var(--sans); color: var(--ink-2); vertical-align: 6px; cursor: pointer; }
+.fn:hover { border-color: var(--ink); color: var(--ink); }
+.fn[aria-current="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+.memo-doc .sources { margin-top: 30px; padding-top: 6px; border-top: 1px solid var(--line); font: var(--fs)/1.5 var(--sans); }
+.memo-doc .sources h2 { margin-top: 12px; }
+.memo-doc .sources ol { margin: 0; padding-left: 26px; color: var(--ink-3); }
+.src-link { border: 0; padding: 0; background: none; color: var(--ink-2); cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 2px; }
+.src-link:hover { color: var(--ink); text-decoration-color: var(--ink); }
+.print-only { display: none; }
+
+@media (max-width: 1020px) {
+  .memo-work { grid-template-columns: minmax(0, 1fr); }
+  .memo-work:not(.solo) .memo-scroll { border-right: 0; }
+}
+
+@media print {
+  @page { margin: 18mm 16mm; }
+  html, body, #root { height: auto !important; overflow: visible !important; background: #fff; }
+  .app, main.main, .work, .memo-work, .memo-scroll { display: block !important; height: auto !important; width: auto !important; min-width: 0; }
+  .rail, .co-head, .tabs, .detail, .no-print, .toast { display: none !important; }
+  .scroll { overflow: visible !important; }
+  .memo-doc { max-width: none; width: auto; margin: 0; padding: 0; font-size: 11pt; line-height: 1.5; color: #000; }
+  .memo-doc h1 { font-size: 18pt; }
+  .memo-doc .byline, .memo-doc .kicker { color: #444; }
+  .fn { border: 0; background: none; min-width: 0; height: auto; padding: 0; margin-left: 1px; font-size: 7pt; color: #000; vertical-align: super; }
+  .fn::before { content: "["; } .fn::after { content: "]"; }
+  .memo-doc .flagged { background: none; border-bottom: 1px dashed #000; }
+  .memo-doc .flag-note { background: none; padding: 0; color: #000; }
+  .print-only { display: inline; }
+  .src-link { color: #000; text-decoration: none; font-weight: 600; }
+  .memo-doc .sources { font-size: 8.5pt; line-height: 1.4; break-before: auto; }
+  .memo-doc .sources li { break-inside: avoid; margin-bottom: 4px; color: #333; }
+  .memo-doc h2 { break-after: avoid; }
+}

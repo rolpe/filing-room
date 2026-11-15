@@ -130,7 +130,7 @@ function Refs({ cites, active, onPick, missing }: { cites: number[]; active: num
   ))}</>;
 }
 
-function FindingPanel({ ticker, qid, group, position, onPrev, onNext, onClose }: {
+export function FindingPanel({ ticker, qid, group, position, onPrev, onNext, onClose }: {
   ticker: string; qid: string; group: string; position: string;
   onPrev?: () => void; onNext?: () => void; onClose: () => void;
 }) {

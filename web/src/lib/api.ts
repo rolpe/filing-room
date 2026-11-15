@@ -247,6 +247,64 @@ export interface Passage {
   next_chunk: string | null;
 }
 
+export interface Financials {
+  years: { fy: string; end: string; url: string | null }[];
+  rows: { key: string; label: string; kind: "usd" | "pct"; values: (number | null)[] }[];
+}
+
+export interface MemoSentence { n: number; text: string; kind: "fact" | "judgment"; notes: number[]; flagged: boolean; reason: string }
+export interface MemoNote { n: number; qid: string; label: string; quote: string; doc_id: string; section: string; url: string }
+export interface Memo {
+  title: string;
+  generated: string | null;
+  model: string | null;
+  sections: { heading: string; sentences: MemoSentence[] }[];
+  open_questions: string[];
+  notes: MemoNote[];
+  check: { sentences: number; flagged: number } | null;
+}
+
+export interface Question {
+  id: string;
+  asked_at: string;
+  question: string;
+  status: "answered" | "not_found" | "unsupported" | "error";
+  answer: string;
+  value: string;
+  unit: string;
+  period: string;
+  confidence: string;
+  error: string | null;
+  citations: Citation[];
+  cost_usd: number;
+  model: string;
+}
+
+export interface Thread {
+  questions: Question[];
+  spend: { today_usd: number; cap_usd: number; estimate_usd: number };
+}
+
+export interface Filing {
+  doc_id: string;
+  form: string;
+  form_label: string;
+  period: string;
+  report_date: string;
+  filing_date: string;
+  url: string;
+}
+
+export interface Usage {
+  days: { date: string; questions_usd: number; screening_usd: number }[];
+  total_usd: number;
+  caps: {
+    questions: { today_usd: number; cap_usd: number; estimate_usd: number };
+    screening: { today_usd: number; cap_usd: number; per_run_limit_usd: number };
+  };
+  by_company: { ticker: string; name: string; screening_usd: number; questions: number; questions_usd: number }[];
+}
+
 export const api = {
   coverage: () => get<Coverage>("/api/coverage"),
   search: (q: string) => get<SecResult[]>(`/api/sec/search?q=${enc(q)}`),
@@ -263,6 +321,12 @@ export const api = {
     post<FindingDetail>(`/api/companies/${enc(t)}/findings/${enc(qid)}/note`, { text }),
   flag: (t: string, qid: string, flagged: boolean) =>
     post<FindingDetail>(`/api/companies/${enc(t)}/findings/${enc(qid)}/flag`, { flagged }),
+  financials: (t: string) => get<Financials>(`/api/companies/${enc(t)}/financials`),
+  memo: (t: string) => get<Memo>(`/api/companies/${enc(t)}/memo`),
+  questions: (t: string) => get<Thread>(`/api/companies/${enc(t)}/questions`),
+  ask: (t: string, question: string, max_usd: number) => post<Thread>(`/api/companies/${enc(t)}/questions`, { question, max_usd }),
+  filings: (t: string) => get<Filing[]>(`/api/companies/${enc(t)}/filings`),
+  usage: () => get<Usage>("/api/usage"),
   review: (t: string, qid: string, reviewed: boolean) =>
     post<FindingDetail>(`/api/companies/${enc(t)}/findings/${enc(qid)}/review`, { reviewed }),
 };

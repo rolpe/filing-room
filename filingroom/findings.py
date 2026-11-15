@@ -238,6 +238,7 @@ def passage(chunk: dict, quotes: list[tuple[int, str]]) -> dict:
 
 def memo_view(m: dict, rows: list[dict], qs_by_id: dict[str, dict]) -> dict:
     """Memo with footnote numbers: each distinct cited finding gets a number in order of first use."""
+    by_qid = {r["qid"]: r for r in rows}
     usable = {r["qid"] for r in rows if r["status"] == "answered" and r.get("citations_verified", 0) > 0}
     order: list[str] = []
     for s in m["memo"]["sections"]:
@@ -263,8 +264,17 @@ def memo_view(m: dict, rows: list[dict], qs_by_id: dict[str, dict]) -> dict:
     title = re.sub(r"\s+[—-]\s+Preliminary Diligence Memo$", "", m["memo"]["title"])
     return {"title": title, "generated": m["meta"].get("timestamp"), "model": m["meta"].get("model"),
             "sections": sections, "open_questions": m["memo"].get("open_questions", []),
-            "notes": [{"n": num[q], "qid": q, "label": qs_by_id.get(q, {}).get("label", q)} for q in order],
+            "notes": [_memo_note(num[q], q, qs_by_id, by_qid) for q in order],
             "check": {"sentences": chk.get("n_sentences"), "flagged": len(flagged)} if chk else None}
+
+
+def _memo_note(n: int, qid: str, qs_by_id: dict, by_qid: dict) -> dict:
+    """A footnote: the finding it points to and its first verified quote (for print and export)."""
+    r = by_qid.get(qid, {})
+    c = next((c for c in r.get("citations", []) if c.get("verified")), {})
+    return {"n": n, "qid": qid, "label": qs_by_id.get(qid, {}).get("label", qid), "quote": c.get("quote", ""),
+            "doc_id": c.get("doc_id", ""), "url": c.get("url", ""),
+            "section": "" if c.get("section") in ("proxy", "press_release") else c.get("section", "")}
 
 
 def memo_markdown(name: str, ticker: str, mv: dict, rows: list[dict]) -> str:

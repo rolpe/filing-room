@@ -6,7 +6,11 @@ import { Shell } from "./components/Shell";
 import { CoveragePage } from "./pages/Coverage";
 import { CompanyPage } from "./pages/Company";
 import { FindingsPage } from "./pages/Findings";
-import { Placeholder } from "./pages/Placeholder";
+import { OverviewPage } from "./pages/Overview";
+import { MemoPage } from "./pages/Memo";
+import { QAPage } from "./pages/QA";
+import { FilingsPage } from "./pages/Filings";
+import { UsagePage } from "./pages/Usage";
 import { ErrorState } from "./components/States";
 import "./styles/tokens.css";
 import "./styles/app.css";
@@ -27,14 +31,14 @@ const router = createBrowserRouter([
         element: <CompanyPage />,
         children: [
           { index: true, element: <Navigate to="findings" replace /> },
-          { path: "overview", element: <Placeholder name="Overview" /> },
+          { path: "overview", element: <OverviewPage /> },
           { path: "findings", element: <FindingsPage /> },
-          { path: "memo", element: <Placeholder name="Screening memo" /> },
-          { path: "qa", element: <Placeholder name="Q&A" /> },
-          { path: "filings", element: <Placeholder name="Filings" /> },
+          { path: "memo", element: <MemoPage /> },
+          { path: "qa", element: <QAPage /> },
+          { path: "filings", element: <FilingsPage /> },
         ],
       },
-      { path: "usage", element: <Placeholder name="Usage" /> },
+      { path: "usage", element: <UsagePage /> },
       { path: "*", element: <ErrorState title="Page not found" error="There's nothing at this address." /> },
     ],
   },
