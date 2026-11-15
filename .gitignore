@@ -15,3 +15,7 @@ runs/
 
 # Personal drafts, kept out of the public repo
 drafts/
+
+# Web app build output and dependencies
+web/node_modules/
+web/dist/
