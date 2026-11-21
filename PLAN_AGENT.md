@@ -1,6 +1,6 @@
 # PLAN_AGENT.md — an agent mode alongside the pipeline
 
-Status: proposal, nothing built. Written 2026-11-21 after reading the engine, the eval harness, the CLI and the current LangGraph docs.
+Status: built on branch `agent-mode` (increments 1 to 7 and 9; increment 8's paid run skipped, see §14). Written 2026-11-21 after reading the engine, the eval harness, the CLI and the current LangGraph docs; §14 records what each step found.
 
 ## 1. The short version
 
@@ -345,3 +345,36 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 - **Parallel tool calls do happen.** In the spike every turn held one call; here the two RPD questions with several searches put two in each turn.
 - **The not-found guidance is followed loosely.** RPD:rev_nrr ran five searches over three turns before answering not_found, more than the prompt's "two or three", at $0.069 the costliest question here. It was right, and it would have hit the old 30,000 budget.
 - **One wasted call:** RPD:op_nongaap_quarter asked `get_chunk` with no neighbours for a chunk it had just been shown, and got the "already shown" stub. Harmless here; worth counting in the subset.
+
+### Found in increment 7 (2026-11-21; paid, $3.70: subset $0.78, full run $2.92)
+
+**Subset.** 20 items drawn at random, stratified by company and grade (seed 20261121; `golden/agent-subset-20.txt`). Agent 19/20, the recorded pipeline run 20/20 on the same items (by chance none of the pipeline's five misses was drawn). The one miss, RPD:rev_customers, cited the press release's "over 11,500 customers" instead of the 10-Q's 11,772, which the same prompt had found in the increment 5 spot check.
+
+**Full run.** `./fr eval --mode agent --full` on all 80 BILL and RPD items (the owner approved it and `FILINGROOM_MAX_USD=4` for that one command). Compared with the recorded pipeline run `results/2026-09-27_1616_recency.json` by `./fr compare` (`results/agent/2026-11-21_1047_agent80_compare.md`):
+
+| Metric | Pipeline (recorded 2026-09-27) | Agent mode (2026-11-21) |
+|---|---|---|
+| Accuracy | 93.6% (73/78; 85.9–97.2) | 94.9% (74/78; 87.5–98.0) |
+| Numeric / judged / abstain | 28/29 · 37/41 · 8/8 | 29/29 · 37/41 · 8/8 |
+| Citation support (judge: yes, of answered) | 94.0% (63/67; 85.6–97.7) | 88.6% (62/70; 79.0–94.1) |
+| Abstention precision | 61.5% (8/13) | 80.0% (8/10) |
+| False not found (answerable items) | 6.9% (5/72) | 2.8% (2/72) |
+| Verified but wrong (the app's status) | 3.1% (2/65) | 4.4% (3/68) |
+| Answer cost per question | $0.0239 | $0.0295 |
+| Latency mean / median / p90 | 4.5 / 3.8 / 7.3 s | 7.9 / 6.8 / 14.3 s |
+| Model calls / tool calls per question | 1 / 0 | 2.92 / 2.24 |
+
+- **Accuracy: no detectable difference.** Five items flipped, 3 to agent mode and 2 to the pipeline (sign test p = 1.00); the intervals overlap almost entirely.
+- **What agent mode changed.** It recovered three of the pipeline's five false not-founds by searching again (BILL:rev_international, found on its sixth and last call; RPD:comp_sayonpay; RPD:gov_activist). It added one premature stop and one reading error. BILL:rev_customers is the premature stop: six chunks in BILL's index contain the 479,300 total, the agent was shown none of them (two searches in one turn with weak query words), took the 21,400 overlap figure from a passage it did see, and answered at high confidence after two calls; the pipeline, with the checklist's search words, was shown one of the six. RPD:gov_board is the reading error (it miscounted the directors). Both kept verified quotes, so the app would show both as Verified. The two misses both modes share (RPD:mgmt_ceo, RPD:cap_buyback_spend) are interpretation errors, not retrieval.
+- **Citation support moved the other way.** The judge marked 8 of 70 agent answers only partly supported, against 4 of 67 for the pipeline. The pattern: the answer states things its quotes do not cover (the SOFR margins in BILL:debt_instruments, the US/international split in RPD:emp_count, AI-native entrants in BILL:comp_competitors), and RPD:op_income has the right number but says "up from $35.035 million" when the figure fell. The agent reads more passages and writes more than it quotes. Too few items to call significant; the direction and the mechanism are clear.
+- **Cost depends on caching.** Agent mode read 2.14 times the pipeline's input tokens (1,729,997 against 808,017) but cost 1.23 times as much, because nearly all of it was cache reads and writes. The same calls with no caching would have cost about $3.99 against the $2.36 paid, about 1.7 times the pipeline.
+- **Run-to-run variation.** One of the 20 subset items changed grade between the two agent runs, minutes apart (RPD:rev_customers, right in the full run).
+- **Budgets.** Budget tokens per question: median 17,972, 90th percentile 44,680, maximum 80,494, all under the 100,000 default, which stays. One question stopped at the step limit and was still right. No question cited a chunk it had not been shown; no repair round ran; no errors. 20 of 80 questions made several searches in one turn; 28 of 80 spent a model call on `list_filings`.
+- **Caveats.** The pipeline side is one recorded run from 2026-09-27 and the agent side one run on 2026-11-21, so the latency ratio is indicative. BILL and RPD are the companies the pipeline's retrieval was tuned on, while the agent prompt was written once and not tuned on them; if anything that favours the pipeline. Neither number is held out (BOX was not used). The judge is a model, and four of the five flips are judged items.
+
+**Increment 8 (repair edge): paid run skipped.** The repair round fires only on an answered draft with no verified quote. That happened 0 times in 80 questions and 0 in 20, so a paid run would have measured nothing. The edge stays built, off by default, and tested; its effect is unmeasured because its trigger never occurred, not shown to be nil.
+
+**Follow-up ideas, unmeasured and not done:**
+- Put the `list_filings` output in the first message, since 28 of 80 questions spent a model call on it.
+- An answering rule that `answer` may state only what a quote backs, aimed at the drop in citation support.
+- (Both change what the model is sent, so each would be a measured change, with `prompts/agent.md`'s "last moved" header updated.)

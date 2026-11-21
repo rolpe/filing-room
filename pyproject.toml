@@ -1,7 +1,7 @@
 [project]
 name = "filing-room"
 version = "0.1.0"
-description = "A grounded diligence agent over public SEC filings, with evals."
+description = "A first-look screening tool over public SEC filings, with evals: a measured retrieval pipeline and an optional LangGraph agent mode."
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=1.8.0",
