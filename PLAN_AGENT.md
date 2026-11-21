@@ -60,10 +60,11 @@ One graph run answers one question for one company. The checklist run stays what
 ```mermaid
 flowchart TD
     START --> agent
-    agent -->|asked for tools, budget left| tools
-    agent -->|asked for tools, budget spent| finalize
+    agent -->|asked for tools, within budget| tools
+    agent -->|asked for tools, tool-call cap or token budget spent| finalize
     agent -->|returned an answer| verify
-    tools --> agent
+    tools -->|calls left| agent
+    tools -->|next call is the last one allowed| finalize
     finalize --> verify
     verify -->|no quote verified, one repair left| agent
     verify -->|otherwise| END
@@ -92,13 +93,13 @@ Things that are not data about the run (the ticker, the loaded `Index`, the `Cos
 |---|---|---|
 | `agent` | model call | Sends system prompt, tools and messages. Either the model asks for tools, or it stops and its text is the answer JSON. |
 | `tools` | plain code | Runs every requested tool, returns all results in one message, records `seen`. A bad argument comes back as an error result the model can read, not an exception. |
-| `finalize` | model call | Used only when a budget ran out. Answers any pending tool requests with "limit reached", then makes one call with tools switched off (`tool_choice: none`) so the model must answer from what it has seen or return `not_found`. |
+| `finalize` | model call | Used only when a budget ran out. Makes one call with tools switched off (`tool_choice: none`) so the model must answer from what it has seen or return `not_found`. Two entries: from `agent` when the turn's tool requests would pass the tool-call cap or the token budget is already spent (the requests get "limit reached" results); from `tools` after the last allowed tool round (the step limit), whose real results end with a note to answer now. *(Changed at checkpoint B: originally the step limit refused the second-to-last call's requests too, wasting that call.)* |
 | `verify` | plain code | Runs the shared row builder: string-verifies each quote against the chunk it names, sets `unsupported` when none verify. No model involved. |
 
 ### Stop conditions, in the order they bite
 
 1. **The model decides it is done.** It stops calling tools and returns the answer. This is the "genuinely agentic" part: nothing in code tells it how many searches to run.
-2. **Step limit.** Default 6 model calls and 8 tool calls per question. Checked by the edge out of `agent`.
+2. **Step limit.** Default 6 model calls (the forced final answer included) and 8 tool calls per question. The tool-call cap is checked by the edge out of `agent`; the model-call limit by the edge out of `tools`, so the last tool round still runs and the final call answers from it.
 3. **Token limit.** Default 30,000 tokens of exploration per question. The final answer call is always allowed, so the true ceiling is that plus one call; I will report the measured maximum. For scale, the pipeline uses about 10,100 input tokens per question today.
 4. **Existing spend caps.** Every call goes through `llm.py`, so `CostMeter.limit` and `FILINGROOM_MAX_USD` still stop the whole command.
 5. **`recursion_limit` backstop.** Set to a little over twice the model-call limit. If a routing bug ever loops, LangGraph raises `GraphRecursionError`; it is caught and the row becomes `status: error`.
@@ -296,4 +297,16 @@ Hand-off is through state: plan in, evidence out, verdict out. A further step is
 
 **Read in current docs or package metadata:** LangGraph version and dependencies; `StateGraph`, `TypedDict` state with reducers, `add_node`, `add_conditional_edges`, `START`/`END`; `recursion_limit` in the invoke config and `GraphRecursionError` from `langgraph.errors`; runtime context via `context_schema`; node timeouts are async-only; LangGraph does not require LangChain; the quickstart's hand-written tool node; Pydantic AI's built-in loop and `UsageLimits`; Anthropic tool use together with `output_config.format`, `strict` tools, and `tool_choice: none`.
 
-**Not yet verified, each assigned to an increment:** LangSmith tracing default (3); exactly how super-steps count against `recursion_limit` (3); concurrent `invoke` on one compiled graph from several threads (3); state after `GraphRecursionError` (3); format-constraint behaviour on tool-calling turns for `claude-sonnet-5` (4); whether prompt caching engages at this prefix length (4); that `anthropic` 1.8.0 accepts every parameter used (4).
+**Not yet verified, each assigned to an increment:** format-constraint behaviour on tool-calling turns for `claude-sonnet-5` (4); whether prompt caching engages at this prefix length (4); that `anthropic` 1.8.0 accepts every parameter used (4).
+
+### Found in increment 3 (2026-11-21, langgraph 1.2.24, langsmith 0.16.0, langchain-core 1.8.4)
+
+Each finding is pinned by a test in `tests/test_agent_graph.py` (class `SpikeTest` unless noted).
+
+- **Dependency.** `uv add langgraph==1.2.24` added 26 packages and changed none: the `uv.lock` diff is additions only, and `anthropic` stays 1.8.0, `pydantic` 2.13.5. `httpx` 0.28.1 now sits beside the SDK's `httpx2`.
+- **LangSmith tracing default: off, but easy to turn on by accident.** From the installed source: `langsmith.utils.tracing_is_enabled()` checks, in order, a context variable, an active run tree, a process-wide switch set by `langsmith.configure(enabled=...)`, and only then the environment. In the environment it reads `LANGSMITH_TRACING_V2`, then `LANGCHAIN_TRACING_V2`, then falls back to `LANGSMITH_TRACING` and `LANGCHAIN_TRACING`; the value must be exactly `"true"`. With none set, it is off. Two traps: (1) `LANGSMITH_TRACING=false` alone does **not** switch off a `LANGCHAIN_TRACING_V2=true` (the `_V2` names are checked first); (2) the environment lookup is cached (`functools.lru_cache`), so changing a variable after langsmith has read it does nothing. `langchain-core` adds tracers only when that same function says yes. **What the code does:** `graph.py`, before importing langgraph, sets all four variables to `false`, clears the cache, and calls `langsmith.configure(enabled=False)`, which takes precedence over the environment. **Tests:** with every tracing variable set to `true` and a LangSmith API key present, an agent run (fake model) makes zero socket connections and zero DNS lookups, builds no `langsmith.Client`, and `tracing_is_enabled()` is `False`. A control test shows the same environment does turn tracing on without the switch, and that `LANGSMITH_TRACING=false` alone does not.
+- **How super-steps count against `recursion_limit`.** Each node run is one super-step (our nodes never run in parallel). Writing the input also counts as one, and the limit is checked *before* the "nothing left to run" check, so a path of n node steps needs `recursion_limit >= n + 1`: at exactly n, every node, `verify` included, has run and LangGraph still raises `GraphRecursionError`. Measured: the 12-step step-limit path (agent and tools five times each, finalize, verify) completes at 13 and raises at 12 after all 12 nodes ran. `graph.run` handles that edge (if `verify` had finished, its row is returned). The backstop is `2 * max_model_calls + 3`: at most M model calls run and every other step directly follows one, so a legal run is at most 2M steps. An exhaustive test over all 162 scripts at M = 4 (tool turns, fabricated answers, good answers; repair on and off) finds the longest legal path is exactly 2M (tool rounds all the way, then finalize and verify) and none reaches the backstop. Default `recursion_limit` is 10,007 (`LANGGRAPH_DEFAULT_RECURSION_LIMIT`).
+- **Concurrent `invoke` from several threads: safe for this graph.** One compiled graph, six worker threads, twelve questions, a barrier so all six runs are inside the graph at the same time, and a fake model that asserts it sees only its own question and echoes the question id into its search queries and answer. Every row's `qid`, answer text, trace queries and counters match its own question (`GraphTest.test_one_compiled_graph_six_threads_no_state_crosses`). This fits how it is built (no checkpointer, so each call starts from fresh channels; the runtime context is passed per call), though I did not audit the scheduler's internals. So `compiled()` caches one graph per process; the fallback (one graph per worker) is not needed.
+- **State after `GraphRecursionError`.** `invoke` raises and returns nothing; without a checkpointer the run's state is gone (the docs are silent, and there is nothing to read back). `graph.run` therefore uses `stream(stream_mode="values")`, which yields the full state after every super-step, and keeps the last one. On the error it builds an `error` row that still reports the model calls, tool calls, tokens, spend, trace and seen chunks up to the last completed step (`GraphTest.test_recursion_backstop_gives_an_error_row_with_partial_counts`).
+- **Pipeline mode never loads the framework.** Importing `filingroom.cli`, `answer`, `pipeline`, `evaluate`, `filingroom.agent` and `filingroom.agent.tools`, then answering a question in pipeline mode, leaves `langgraph`, `langsmith` and `langchain_core` out of `sys.modules` (subprocess test).
+- **A bug the tests caught in my own routing, not in the framework.** With the repair edge on, a repair round that started with one model call left could ask for tools and then `finalize` would make call M + 1. A repair now needs two calls of budget left. Repair stays off by default.
