@@ -43,14 +43,22 @@ def _mode_args(p):
     p.add_argument("--repair", action="store_true", help="agent mode: one retry when no quote verifies")
 
 
+def _agent_opts(a) -> dict:
+    return {} if a.mode == "pipeline" else dict(max_model_calls=a.max_steps, max_tool_calls=a.max_tool_calls,
+                                                 max_tokens=a.max_tokens_per_question, repair=a.repair)
+
+
 def _answer_fn(a):
     """answer_question for the chosen mode, with the same call signature."""
-    if a.mode == "pipeline":
-        return answer.answer_question
-    from functools import partial
-    from . import agent
-    return partial(agent.answer_question, max_model_calls=a.max_steps, max_tool_calls=a.max_tool_calls,
-                   max_tokens=a.max_tokens_per_question, repair=a.repair)
+    from . import modes
+    return modes.answerer(a.mode, **_agent_opts(a))
+
+
+def _agent_line(r: dict) -> str:
+    ag = r["agent"]
+    return (f"agent: {ag['model_calls']} model calls, {ag['tool_calls']} tool calls, {ag['tokens']:,} tokens, "
+            f"stop={ag['stop']}, ${ag['usd']:.4f}, {r['seconds']} s, {len(r['retrieved'])} chunks seen"
+            + (f", verified quotes from unseen chunks: {ag['cited_unseen']}" if ag["cited_unseen"] else ""))
 
 
 def main() -> None:
@@ -88,6 +96,7 @@ def main() -> None:
     p.add_argument("--final", action="store_true")
     p.add_argument("--workers", type=int, default=6)
     _model_args(p)
+    _mode_args(p)
 
     p = sub.add_parser("memo", help="IC memo from the latest checklist run (or --run), with a claim check")
     p.add_argument("ticker")
@@ -108,6 +117,7 @@ def main() -> None:
     p.add_argument("--only", help="comma-separated golden ids to run (for debugging; not logged)")
     p.add_argument("--companies", help="comma-separated tickers (default: tuning set, or all with --final)")
     _model_args(p)
+    _mode_args(p)
 
     p = sub.add_parser("ui", help="local web UI on 127.0.0.1 (only this Mac can reach it)")
     p.add_argument("--port", type=int, default=8787)
@@ -167,18 +177,16 @@ def main() -> None:
                 print(f"  turn {t_['turn']}: {t_['tool']} {json.dumps(t_['input'])} -> "
                       f"{len(t_['shown'])} new, {len(t_['refs']) - len(t_['shown'])} already shown"
                       f"{' (error)' if t_['error'] else ''}")
-            print(f"agent: {ag['model_calls']} model calls, {ag['tool_calls']} tool calls, {ag['tokens']:,} tokens, "
-                  f"stop={ag['stop']}, {r['seconds']} s, {len(r['retrieved'])} chunks seen"
-                  + (f", verified quotes from unseen chunks: {ag['cited_unseen']}" if ag["cited_unseen"] else ""))
+            print(_agent_line(r))
             print(f"usage: {json.dumps(meter.summary()['by_model'])}")
         print(f"cost ${meter.cost():.4f}")
 
     elif a.cmd == "run":
         t = _tickers(a.ticker, a.final)[0]
         meter = llm.CostMeter()
-        print(f"answering {len(checklist.load())} questions for {t} with {a.model} ...")
+        print(f"answering {len(checklist.load())} questions for {t} with {a.model} in {a.mode} mode ...")
         path = pipeline.run_checklist(t, meter, model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand,
-                                      workers=a.workers)
+                                      workers=a.workers, mode=a.mode, agent_opts=_agent_opts(a))
         data = json.loads(path.read_text())
         counts = {s: sum(r["status"] == s for r in data["answers"]) for s in ("answered", "not_found", "unsupported", "error")}
         nc = data["meta"]["number_check"]
@@ -209,13 +217,16 @@ def main() -> None:
         if a.only:
             # Debug path: run a subset without writing results or the changelog.
             ids = set(a.only.split(","))
-            qs, meter = checklist.by_id(), llm.CostMeter()
+            qs, meter, fn = checklist.by_id(), llm.CostMeter(), _answer_fn(a)
             for item in [i for i in golden.load(tickers) if i["id"] in ids]:
-                r = answer.answer_question(item["ticker"], qs[item["qid"]], index.Index(item["ticker"]), meter,
-                                           model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
+                r = fn(item["ticker"], qs[item["qid"]], index.Index(item["ticker"]), meter,
+                       model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
                 print(json.dumps({"id": item["id"], "expected": item["expected"], "status": r["status"],
                                   "answer": r["answer"], "value": r["value"], "citations": r["citations"],
-                                  "retrieved": r["retrieved"]}, indent=2))
+                                  "retrieved": r["retrieved"], **({"agent": r["agent"]} if "agent" in r else {})},
+                                 indent=2))
+                if "agent" in r:
+                    print(_agent_line(r))
             print(f"cost ${meter.cost():.4f}")
             return
         evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model, label=a.label,

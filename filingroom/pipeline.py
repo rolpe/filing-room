@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from . import answer, checklist, config, edgar, golden, index, llm, parse, report
+from . import answer, checklist, config, edgar, golden, index, llm, modes, parse, report
 
 NEEDED = {"10-K": 2, "10-Q": 1, "DEF 14A": 1, "8-K": 1}  # what the checklist's periods and questions rely on
 RUN_ESTIMATE_USD = 1.20  # 40 answers (~$1.00) + memo and claim check (~$0.15-0.20)
@@ -141,15 +141,18 @@ def load_partial(partial) -> dict[str, dict]:
 def run_checklist(ticker: str, meter: llm.CostMeter, *, model: str = answer.DEFAULT_MODEL,
                   effort: str | None = answer.DEFAULT_EFFORT, k: int = answer.DEFAULT_K,
                   expand: int = answer.DEFAULT_EXPAND, workers: int = 6, progress=None,
-                  out_dir=None, partial=None):
+                  out_dir=None, partial=None, mode: str = "pipeline", agent_opts: dict | None = None):
     """Answer all 40 questions, add the number check, write <out_dir>/<TICKER>_<stamp>.json/.md (default runs/).
 
     With `partial` (a .jsonl path), each answer is appended as it completes and answers already there are reused,
     so a resumed run doesn't pay twice. Each question is answered independently, so reuse doesn't change any input.
+    Only answers from the same mode are reused. `mode="agent"` answers through agent mode (CLI only for now); its
+    run files are named <TICKER>_<stamp>_agent and record the mode and agent settings in `meta`.
     Returns the json path."""
+    ask = modes.answerer(mode, **(agent_opts or {}))
     ix = index.Index(ticker)
     qs = checklist.load()
-    have = load_partial(partial)
+    have = {qid: r for qid, r in load_partial(partial).items() if modes.row_mode(r) == mode}
     done = sum(q["id"] in have for q in qs)
     lock = threading.Lock()
     if progress:
@@ -159,7 +162,7 @@ def run_checklist(ticker: str, meter: llm.CostMeter, *, model: str = answer.DEFA
         nonlocal done
         if q["id"] in have:
             return have[q["id"]]
-        r = answer.answer_question(ticker, q, ix, meter, model=model, effort=effort, k=k, expand=expand)
+        r = ask(ticker, q, ix, meter, model=model, effort=effort, k=k, expand=expand)
         with lock:
             done += 1
             if partial:
@@ -174,11 +177,13 @@ def run_checklist(ticker: str, meter: llm.CostMeter, *, model: str = answer.DEFA
     stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
     meta = {"timestamp": stamp, "model": model, "cost_usd": meter.cost(), "n_filings": len(edgar.manifest(ticker)),
             "usage": meter.summary(), "number_check": number_check(ticker, rows), "reused_answers": len(have)}
+    if mode != "pipeline":  # pipeline run files keep exactly their old shape
+        meta.update(mode=mode, agent_opts={k: v for k, v in (agent_opts or {}).items() if k != "call_model"})
     out_dir = out_dir or config.RUNS
     out_dir.mkdir(parents=True, exist_ok=True)
-    path = out_dir / f"{ticker}_{stamp}.json"
+    path = out_dir / f"{ticker}_{stamp}{'' if mode == 'pipeline' else '_' + mode}.json"
     path.write_text(json.dumps({"meta": meta, "answers": rows}, indent=1))
-    (out_dir / f"{ticker}_{stamp}.md").write_text(report.checklist_md(ticker, rows, meta))
+    path.with_suffix(".md").write_text(report.checklist_md(ticker, rows, meta))
     return path
 
 

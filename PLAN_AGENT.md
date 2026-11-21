@@ -328,3 +328,20 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 - **Conversation caching pays even on three-call questions.** Cost with only the system-prompt breakpoint (everything after the prefix at the plain input rate), from the same usage: rev_total $0.0302 vs $0.0299 actual; na_gross_retention $0.0284 vs $0.0240; debt_instruments $0.1037 vs $0.0588. A two-call question (search, then answer) would lose a little; none occurred. Automatic caching stays on.
 - **The token budget as defined binds early.** It sums input, cached input and output over calls, and each call resends the conversation, so it grows roughly with the square of the number of turns. debt_instruments passed 30,000 after its fifth call (cumulative 43,036) and its last tool request was refused; the forced answer was still complete. Effective cost was about $1.0 to $1.7 per million budget tokens. **Default raised to 100,000** (owner's decision, 2026-11-21): none of the three questions would have reached it, the six-call limit binds first, and at the measured rate it caps a question at about $0.10 to $0.17. To re-check on the increment 5 spot check, since three questions are not a distribution.
 - **Behaviour worth watching.** The model made one tool call per turn throughout, never several, despite the prompt's advice. It opened two of three questions with `list_filings`, spending a turn on it. It passed `topics` once as a bare string, which the tool accepts. No question cited a chunk it had not been shown.
+
+### Found in increment 5 (2026-11-21; paid, $0.177)
+
+`./fr eval --only RPD:rev_nrr,BILL:na_cac,RPD:rev_customers,BILL:comp_ceo_total,RPD:op_nongaap_quarter --mode agent`: two expected not-found items, a "current" question, a proxy number and an earnings-release figure, three of them RPD. Graded by eye against the answer key (`--only` does not grade); the recorded pipeline run got all five right too.
+
+| Item | Agent result | Calls / tools | Tokens | Cost | Time |
+|---|---|---|---|---|---|
+| BILL:comp_ceo_total | $16,139,836, correct | 2 / 1 | 11,946 | $0.026 | 5.7 s |
+| BILL:na_cac | not_found, correct (notes S&M includes customer acquisition costs) | 2 / 1 | 10,527 | $0.015 | 5.0 s |
+| RPD:rev_nrr | not_found, correct (names the metrics RPD does disclose) | 4 / 5 | 54,642 | $0.069 | 9.8 s |
+| RPD:rev_customers | 11,772 with the definition, correct | 3 / 4 | 29,791 | $0.044 | 8.8 s |
+| RPD:op_nongaap_quarter | $28.9M from the Q2 FY2026 release, correct | 3 / 2 | 19,885 | $0.022 | 7.2 s |
+
+- **Eight agent questions so far** (increments 4 and 5): all correct; no limit hit at the 100,000 default. Budget tokens 10,527 to 59,150 (median about 19,700); cost $0.015 to $0.069, mean $0.036 per question against the pipeline's $0.024; wall time 5.0 to 25.6 s (median about 8 s) against the pipeline's 4.5 s mean.
+- **Parallel tool calls do happen.** In the spike every turn held one call; here the two RPD questions with several searches put two in each turn.
+- **The not-found guidance is followed loosely.** RPD:rev_nrr ran five searches over three turns before answering not_found, more than the prompt's "two or three", at $0.069 the costliest question here. It was right, and it would have hit the old 30,000 budget.
+- **One wasted call:** RPD:op_nongaap_quarter asked `get_chunk` with no neighbours for a chunk it had just been shown, and got the "already shown" stub. Harmless here; worth counting in the subset.
