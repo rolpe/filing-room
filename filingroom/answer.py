@@ -126,7 +126,16 @@ def answer_question(ticker: str, q: dict, ix: Index, meter: llm.CostMeter, model
         out = {"status": "error", "answer": "", "value": "", "unit": "", "period": "", "citations": [],
                "confidence": "low"}
         error = str(e)
+    return build_row(ticker, q, ix, out, retrieved=[h.chunk["chunk_id"] for h in hits], model=model, effort=effort,
+                     k=k, expand=expand, started=t0, error=error)
 
+
+def build_row(ticker: str, q: dict, ix: Index, out: dict, *, retrieved: list[str], model: str,
+              effort: str | None, k: int | None, expand: int | None, started: float, error: str | None) -> dict:
+    """Verify each quote against the chunk it names and build the answer row. Shared by pipeline and agent modes.
+
+    `out` is the model's answer JSON (ANSWER_SCHEMA); its citations are annotated in place. `started` is the
+    time.time() when answering began; `seconds` is measured from it to the end of verification."""
     # Mechanical citation check: a quote counts only if it appears in the chunk it names.
     for c in out["citations"]:
         chunk = ix.by_id.get(c["chunk_id"])
@@ -144,6 +153,6 @@ def answer_question(ticker: str, q: dict, ix: Index, meter: llm.CostMeter, model
         "status": status, "model_status": out["status"], "answer": out["answer"],
         "value": out["value"], "parsed_value": parse_value(out["value"]), "unit": out["unit"],
         "period": out["period"], "confidence": out["confidence"], "citations": out["citations"],
-        "citations_verified": n_ok, "retrieved": [h.chunk["chunk_id"] for h in hits],
-        "model": model, "effort": effort, "k": k, "expand": expand, "seconds": round(time.time() - t0, 1), "error": error,
+        "citations_verified": n_ok, "retrieved": retrieved,
+        "model": model, "effort": effort, "k": k, "expand": expand, "seconds": round(time.time() - started, 1), "error": error,
     }
