@@ -8,13 +8,14 @@ Citation support is judged for every answered item, using only quotes that verif
 """
 
 import json
+import math
 import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from . import answer, checklist, config, golden, llm
+from . import answer, checklist, config, golden, llm, modes
 from .index import Index
 
 JUDGE_MODEL = "claude-opus-5"
@@ -30,6 +31,9 @@ JUDGE_SCHEMA = {
     "additionalProperties": False,
 }
 CHANGELOG = config.ROOT / "CHANGELOG-evals.md"
+# Agent mode results live apart, so the pipeline's history, trend and "previous run" comparisons stay clean.
+AGENT_RESULTS = config.RESULTS / "agent"
+AGENT_CHANGELOG = config.ROOT / "CHANGELOG-agent-evals.md"
 
 
 def eval_tickers(final: bool) -> list[str]:
@@ -118,13 +122,19 @@ def metrics(rows: list[dict]) -> dict:
 
 def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int = 0, judge_model: str = JUDGE_MODEL,
         label: str = "", note: str = "", workers: int = 6, use_judge: bool = True,
-        only: set[str] | None = None, progress=None, out_dir=None, changelog: bool = True) -> dict:
+        only: set[str] | None = None, progress=None, out_dir=None, changelog: bool = True,
+        mode: str = "pipeline", agent_opts: dict | None = None) -> dict:
     """Optional hooks (used by the app's evaluation area; the CLI passes none of them):
     only       golden ids to run instead of the whole set (a spot check)
     progress   called with (items done, items total) as each item is graded
     out_dir    write the results files (and the rows backup) here instead of results/ (and runs/)
     changelog  False to skip the CHANGELOG-evals.md line
+
+    mode="agent" answers through agent mode (agent_opts: its budget settings) and writes to results/agent/ and
+    CHANGELOG-agent-evals.md instead; the result records the mode, the settings, the ids run, and agent metrics.
     """
+    ask = modes.answerer(mode, **(agent_opts or {}))
+    agent = mode != "pipeline"
     t0 = time.time()
     items = golden.load(tickers)
     if only is not None:
@@ -132,11 +142,16 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
     qs = checklist.by_id()
     ixs = {t: Index(t) for t in tickers}
     answer_meter, judge_meter = llm.CostMeter(), llm.CostMeter()
-    print(f"eval: {len(items)} golden items over {', '.join(tickers)} | model={model} effort={effort} k={k} expand={expand}")
+    if agent:
+        k = expand = None  # the agent chooses its own searches
+        print(f"eval: {len(items)} golden items over {', '.join(tickers)} | {mode} mode, model={model} "
+              f"effort={effort} {agent_opts or {}}")
+    else:
+        print(f"eval: {len(items)} golden items over {', '.join(tickers)} | model={model} effort={effort} k={k} expand={expand}")
 
     def work(item):
-        ans = answer.answer_question(item["ticker"], qs[item["qid"]], ixs[item["ticker"]], answer_meter,
-                                     model=model, effort=effort, k=k, expand=expand)
+        ans = ask(item["ticker"], qs[item["qid"]], ixs[item["ticker"]], answer_meter,
+                  model=model, effort=effort, k=k, expand=expand)
         grade = item["grade"]
         correct, supported, reason = None, None, ""
         if grade == "numeric":
@@ -168,7 +183,7 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
     # Save the paid-for answers before anything else can fail.
     rows_dir = out_dir or config.RUNS
     rows_dir.mkdir(parents=True, exist_ok=True)
-    (rows_dir / "last_eval_rows.json").write_text(json.dumps(rows))
+    (rows_dir / ("last_agent_eval_rows.json" if agent else "last_eval_rows.json")).write_text(json.dumps(rows))
     m = metrics(rows)
     m["cost_usd"] = {"answer": round(answer_meter.cost(), 4), "judge": round(judge_meter.cost(), 4)}
     m["cost_per_company_usd"] = round(answer_meter.cost() / len(tickers), 4)
@@ -178,25 +193,34 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
               "effort": effort, "k": k, "expand": expand, "judge_model": judge_model if use_judge else None,
               "metrics": m, "usage": {"answer": answer_meter.summary(), "judge": judge_meter.summary()},
               "rows": rows}
-    prev = latest_result(tickers)
-    res_dir = out_dir or config.RESULTS
+    if agent:
+        result.update(mode=mode, agent_opts={k_: v for k_, v in (agent_opts or {}).items() if k_ != "call_model"},
+                      only=sorted(only) if only is not None else None)
+        m["agent"] = agent_metrics(rows)
+        prev = latest_result(tickers, directory=AGENT_RESULTS, ids={r["id"] for r in rows})
+    else:
+        prev = latest_result(tickers)
+    res_dir = out_dir or (AGENT_RESULTS if agent else config.RESULTS)
     res_dir.mkdir(parents=True, exist_ok=True)
     name = f"{stamp}{'_' + label if label else ''}"
     (res_dir / f"{name}.json").write_text(json.dumps(result, indent=1))
     (res_dir / f"{name}.md").write_text(report_md(result, prev))
     if changelog:
-        append_changelog(result)
+        (append_agent_changelog if agent else append_changelog)(result)
     print(report_md(result, prev, brief=True))
     print(f"wrote {res_dir.relative_to(config.ROOT) if res_dir.is_relative_to(config.ROOT) else res_dir}/{name}.json and .md")
     result["name"] = name
     return result
 
 
-def latest_result(tickers: list[str]) -> dict | None:
-    for p in sorted(config.RESULTS.glob("*.json"), reverse=True):
+def latest_result(tickers: list[str], directory=None, ids: set[str] | None = None) -> dict | None:
+    """Newest results file for these tickers (in results/ unless `directory`); with `ids`, only one that ran
+    exactly those golden items (agent subsets are compared with the same subset)."""
+    for p in sorted((directory or config.RESULTS).glob("*.json"), reverse=True):
         r = json.loads(p.read_text())
         if "rows" in r and sorted(r["tickers"]) == sorted(tickers):  # skip memo claim-check files
-            return r
+            if ids is None or {row["id"] for row in r["rows"]} == ids:
+                return r
     return None
 
 
@@ -260,6 +284,146 @@ def append_changelog(r: dict) -> None:
                 f"{_fmt(m['citation_support_rate'])} | {_fmt(m['unsupported_claim_rate'])} | "
                 f"{_fmt(m['abstention_precision'])}/{_fmt(m['abstention_recall'])} | "
                 f"{_fmt(m['retrieval_recall'])} | {m['cost_usd']['answer']}/{m['cost_usd']['judge']} |\n")
+
+
+# ---------------------------------------------------------------- agent mode: metrics, changelog, comparison
+
+def _pctile(xs: list[float], q: float) -> float | None:
+    """Nearest-rank percentile."""
+    if not xs:
+        return None
+    xs = sorted(xs)
+    return xs[max(0, min(len(xs) - 1, math.ceil(round(q * len(xs), 9)) - 1))]
+
+
+def latency(rows: list[dict]) -> dict:
+    xs = [r["seconds"] for r in rows if r.get("seconds") is not None]
+    if not xs:
+        return {"mean": None, "median": None, "p90": None}
+    return {"mean": round(sum(xs) / len(xs), 1), "median": _pctile(xs, 0.5), "p90": _pctile(xs, 0.9)}
+
+
+def agent_metrics(rows: list[dict]) -> dict:
+    """Per-question loop statistics from the rows' `agent` blocks (pipeline rows: 1 model call, 0 tool calls)."""
+    ag = [r["agent"] for r in rows if "agent" in r]
+    n = len(ag)
+    if not n:
+        return {"n": 0}
+    stops: dict[str, int] = {}
+    for a in ag:
+        stops[a["stop"]] = stops.get(a["stop"], 0) + 1
+    return {
+        "n": n,
+        "model_calls_mean": round(sum(a["model_calls"] for a in ag) / n, 2),
+        "tool_calls_mean": round(sum(a["tool_calls"] for a in ag) / n, 2),
+        "tokens_mean": round(sum(a["tokens"] for a in ag) / n),
+        "tokens_max": max(a["tokens"] for a in ag),
+        "usd_per_question": round(sum(a["usd"] for a in ag) / n, 4),
+        "hit_limit": sum(a["stop"] in ("step_limit", "token_limit") for a in ag),
+        "stops": stops,
+        "repairs": sum(a.get("repairs", 0) for a in ag),
+        "cited_unseen": sum(len(a.get("cited_unseen", [])) for a in ag),
+        "latency_s": latency(rows),
+    }
+
+
+def append_agent_changelog(r: dict) -> None:
+    m, a = r["metrics"], r["metrics"]["agent"]
+    if not AGENT_CHANGELOG.exists():
+        AGENT_CHANGELOG.write_text(
+            "# Agent mode eval changelog\n\nOne line per agent-mode eval run (results in results/agent/). "
+            "The pipeline's runs are in CHANGELOG-evals.md.\n\n"
+            "| Run | Companies | Items | Change | Acc % | Unsupported % | Abstain P/R | Calls/tools per q | "
+            "Hit limit | $ per q | $ answer/judge |\n|---|---|---|---|---|---|---|---|---|---|---|\n")
+    with open(AGENT_CHANGELOG, "a") as f:
+        f.write(f"| {r['timestamp']} {r['label']} | {','.join(r['tickers'])} | {m['n_items']}"
+                f"{' (subset)' if r.get('only') else ''} | {r['note'] or '-'} ({r['model']}, {r['effort']}, "
+                f"{json.dumps(r.get('agent_opts') or {})}) | {_fmt(m['accuracy'])} | {_fmt(m['unsupported_claim_rate'])} | "
+                f"{_fmt(m['abstention_precision'])}/{_fmt(m['abstention_recall'])} | "
+                f"{a['model_calls_mean']}/{a['tool_calls_mean']} | {a['hit_limit']} | {a['usd_per_question']} | "
+                f"{m['cost_usd']['answer']}/{m['cost_usd']['judge']} |\n")
+
+
+def compare(base: dict, other: dict) -> dict:
+    """Free: two results files (e.g. the pipeline and agent mode) on the items both graded, paired by golden id.
+
+    Returns {n, ids, sides: {name: {...}}, flips: {better, worse, statement}} where each side has accuracy (overall
+    and by grade, with 95% intervals), unsupported, abstention and trust rates, cost per question, latency, and
+    loop statistics. `base` is the reference: "better" means right in `other` and wrong in `base`."""
+    from . import devtools, evalstats
+    ids = sorted({r["id"] for r in base["rows"]} & {r["id"] for r in other["rows"]})
+    gold = devtools._golden_by_id()
+    out = {"n": len(ids), "ids": ids, "sides": {}}
+    for name, res in (("base", base), ("other", other)):
+        rows = [r for r in res["rows"] if r["id"] in set(ids)]
+        tickers = sorted({r["ticker"] for r in rows})
+        c = evalstats.counts(rows)
+        graded = [r for r in rows if r.get("correct") is not None]
+        by_grade = {g: evalstats.rate(sum(bool(r["correct"]) for r in graded if r["grade"] == g),
+                                      sum(r["grade"] == g for r in graded)) for g in ("numeric", "judged", "abstain")}
+        tr = evalstats.trust(rows, gold, devtools._docs_by_ticker(tickers))
+        tr.pop("statuses")
+        ag = agent_metrics(rows)
+        if ag["n"]:
+            usd_q, usd_note = round(sum(r["agent"]["usd"] for r in rows) / len(rows), 4), "sum over these items"
+            calls, tools_, hit = ag["model_calls_mean"], ag["tool_calls_mean"], ag["hit_limit"]
+        else:
+            usd_q = round(res["metrics"]["cost_usd"]["answer"] / max(len(res["rows"]), 1), 4)
+            usd_note = f"run average over its {len(res['rows'])} items"
+            calls, tools_, hit = 1, 0, 0
+        out["sides"][name] = {
+            "label": f"{res.get('timestamp', '')} {res.get('label', '')}".strip(), "mode": res.get("mode", "pipeline"),
+            "accuracy": c["accuracy"], "by_grade": by_grade, "unsupported": c["unsupported_claim_rate"],
+            "abstention_precision": c["abstention_precision"], "abstention_recall": c["abstention_recall"],
+            "trust": tr, "usd_per_question": usd_q, "usd_note": usd_note, "latency": latency(rows),
+            "model_calls": calls, "tool_calls": tools_, "hit_limit": hit, "agent": ag}
+    b = {r["id"]: r.get("correct") for r in base["rows"]}
+    o = {r["id"]: r.get("correct") for r in other["rows"]}
+    better = [i for i in ids if o[i] is True and b[i] is False]
+    worse = [i for i in ids if o[i] is False and b[i] is True]
+    out["flips"] = {"better": better, "worse": worse, "p": evalstats.sign_test(len(better), len(worse)),
+                    "statement": evalstats.flip_statement(len(better), len(worse))}
+    return out
+
+
+def _rate(x: dict) -> str:
+    if not x or x.get("pct") is None:
+        return "–"
+    lo, hi = x["ci"]
+    return f"{x['pct']}% ({x['k']}/{x['n']}; {lo}–{hi})"
+
+
+def _lat(x: dict) -> str:
+    return " / ".join("–" if x[k] is None else str(x[k]) for k in ("mean", "median", "p90"))
+
+
+def compare_md(c: dict) -> str:
+    b, o = c["sides"]["base"], c["sides"]["other"]
+    rows = [("Accuracy", _rate(b["accuracy"]), _rate(o["accuracy"]))]
+    rows += [(f"Accuracy: {g}", _rate(b["by_grade"][g]), _rate(o["by_grade"][g])) for g in ("numeric", "judged", "abstain")]
+    rows += [("Unsupported claims (of answered)", _rate(b["unsupported"]), _rate(o["unsupported"])),
+             ("Abstention precision", _rate(b["abstention_precision"]), _rate(o["abstention_precision"])),
+             ("Abstention recall", _rate(b["abstention_recall"]), _rate(o["abstention_recall"])),
+             ("Verified but wrong (app status)", _rate(b["trust"]["verified_wrong"]), _rate(o["trust"]["verified_wrong"])),
+             ("Wrong answers caught as To review", _rate(b["trust"]["wrong_caught"]), _rate(o["trust"]["wrong_caught"])),
+             ("False not found", _rate(b["trust"]["false_not_found"]), _rate(o["trust"]["false_not_found"])),
+             ("Answer cost per question ($)", f"{b['usd_per_question']} ({b['usd_note']})",
+              f"{o['usd_per_question']} ({o['usd_note']})"),
+             ("Latency mean / median / p90 (s)", _lat(b["latency"]), _lat(o["latency"])),
+             ("Model calls / tool calls per question", f"{b['model_calls']} / {b['tool_calls']}",
+              f"{o['model_calls']} / {o['tool_calls']}"),
+             ("Questions that hit a limit", str(b["hit_limit"]), str(o["hit_limit"]))]
+    lines = [f"# Comparison on {c['n']} paired items", "",
+             f"Base: {b['label']} ({b['mode']}) · Other: {o['label']} ({o['mode']})", "",
+             "| Metric | Base | Other |", "|---|---|---|"] + [f"| {a} | {x} | {y} |" for a, x, y in rows]
+    f = c["flips"]
+    lines += ["", f"Flips: {f['statement']}"]
+    if f["better"]:
+        lines.append(f"- Right only in other: {', '.join(f['better'])}")
+    if f["worse"]:
+        lines.append(f"- Right only in base: {', '.join(f['worse'])}")
+    lines += ["", "Rates show the count and a 95% Wilson interval. Judge cost is not included in answer cost."]
+    return "\n".join(lines)
 
 
 def retrieval_check(tickers: list[str], k: int, expand: int = 0) -> dict:

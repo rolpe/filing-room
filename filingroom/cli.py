@@ -115,9 +115,17 @@ def main() -> None:
     p.add_argument("--no-judge", action="store_true")
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--only", help="comma-separated golden ids to run (for debugging; not logged)")
+    p.add_argument("--ids", help="agent mode: comma-separated golden ids (or @file, one per line) to run, grade and "
+                                 "record in results/agent/ (a measured subset)")
+    p.add_argument("--full", action="store_true", help="agent mode: allow a full eval without --ids")
     p.add_argument("--companies", help="comma-separated tickers (default: tuning set, or all with --final)")
     _model_args(p)
     _mode_args(p)
+
+    p = sub.add_parser("compare", help="free: compare two eval results files on their shared items (e.g. pipeline vs agent)")
+    p.add_argument("base", help="results file, e.g. results/2026-09-27_1616_recency.json")
+    p.add_argument("other", help="results file, e.g. results/agent/<stamp>_<label>.json")
+    p.add_argument("--out", help="also write the table to this .md file")
 
     p = sub.add_parser("ui", help="local web UI on 127.0.0.1 (only this Mac can reach it)")
     p.add_argument("--port", type=int, default=8787)
@@ -229,8 +237,33 @@ def main() -> None:
                     print(_agent_line(r))
             print(f"cost ${meter.cost():.4f}")
             return
+        if a.mode == "agent":
+            ids = None
+            if a.ids:
+                from pathlib import Path
+                raw = Path(a.ids[1:]).read_text().split() if a.ids.startswith("@") else a.ids.split(",")
+                ids = {i.strip() for i in raw if i.strip()}
+                known = {i["id"] for i in golden.load(tickers)}
+                if ids - known:
+                    sys.exit(f"Not golden ids for {', '.join(tickers)}: {', '.join(sorted(ids - known))}")
+            elif not a.full:
+                sys.exit("A full agent-mode eval (80 items) is estimated at $4-6, above the $3 per-command cap. "
+                         "Run a subset with --ids, or raise FILINGROOM_MAX_USD and pass --full.")
+            evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model,
+                         label=a.label, note=a.note, workers=a.workers, use_judge=not a.no_judge, only=ids,
+                         mode="agent", agent_opts=_agent_opts(a))
+            return
+        if a.ids or a.full:
+            sys.exit("--ids and --full are for --mode agent.")
         evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model, label=a.label,
                      note=a.note, workers=a.workers, use_judge=not a.no_judge)
+
+    elif a.cmd == "compare":
+        c = evaluate.compare(json.loads(open(a.base).read()), json.loads(open(a.other).read()))
+        md = evaluate.compare_md(c)
+        print(md)
+        if a.out:
+            open(a.out, "w").write(md + "\n")
 
     elif a.cmd == "ui":
         from . import server
