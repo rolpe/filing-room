@@ -1,6 +1,6 @@
 # PLAN_AGENT.md — an agent mode alongside the pipeline
 
-Status: built on branch `agent-mode` (increments 1 to 7 and 9; increment 8's paid run skipped, see §14). Written 2026-11-21 after reading the engine, the eval harness, the CLI and the current LangGraph docs; §14 records what each step found.
+Status: built on branch `agent-mode` (increments 1 to 7 and 9; increment 8's paid run skipped; one held-out BOX run; see §14). Written 2026-11-21 after reading the engine, the eval harness, the CLI and the current LangGraph docs; §14 records what each step found.
 
 ## 1. The short version
 
@@ -378,3 +378,28 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 - Put the `list_filings` output in the first message, since 28 of 80 questions spent a model call on it.
 - An answering rule that `answer` may state only what a quote backs, aimed at the drop in citation support.
 - (Both change what the model is sent, so each would be a measured change, with `prompts/agent.md`'s "last moved" header updated.)
+
+### The held-out run on BOX (2026-11-21; paid, $1.43; build total $5.41)
+
+The owner approved it in the advisor session ("Yes, run BOX"), and the advisor ran it in this checkout, once, with `prompts/agent.md` as frozen at commit `62d729c` and the default budgets:
+
+`./fr eval --mode agent --final --companies BOX --full --label HOLDOUT-box --note "held-out company, first and only agent-mode run; prompts/agent.md and budgets unchanged since the 80-item tune-set run"`
+
+Cost $1.43 ($1.18 answering, $0.25 judging). Compared with the pipeline's held-out run `results/2026-09-27_1635_HOLDOUT-box.json` (`results/agent/2026-11-21_1100_HOLDOUT-box_compare.md`):
+
+| Metric | Pipeline (2026-09-27) | Agent mode (2026-11-21) |
+|---|---|---|
+| Accuracy | 89.7% (35/39; 76.4–95.9) | 97.4% (38/39; 86.8–99.5) |
+| Numeric / judged / abstain | 12/13 · 19/22 · 4/4 | 13/13 · 21/22 · 4/4 |
+| Citation support (judge: yes, of answered) | 100% (33/33) | 97.1% (33/34) |
+| False not found | 3/36 | 2/36 |
+| Verified but wrong | 1/32 | 0/33 |
+| Answer cost per question | $0.0248 | $0.0294 |
+| Latency mean / median / p90 | 4.3 / 3.6 / 7.0 s | 7.2 / 6.0 / 12.0 s |
+| Model calls / tool calls per question | 1 / 0 | 2.98 / 2.27 |
+
+- **Flips: 3 better, 0 worse** (sign test p = 0.25). BOX:bs_cash and BOX:rev_customers were pipeline false not-founds (rev_customers found on the sixth call, at the step limit); BOX:gov_structure was a pipeline wrong answer. The one agent miss, BOX:ma_recent (the Alphamoon acquisition), is a false not-found in both modes, after five agent calls.
+- **One step-limit stop**, no repairs triggered, no verified quote from an unseen chunk, no errors. Budget tokens: mean 22,478, maximum 81,237.
+- **Citation support:** the tuning set's weaker support for agent answers (62/70 fully supported, against 63/67) did not show on BOX (33/34, against 33/33). Both are recorded; the difference is not explained.
+- **Both sets together:** pipeline 108/117, agent mode 112/117; 6 flips better and 2 worse, exact two-sided sign test p = 0.29 (`evalstats.sign_test(6, 2)`). The same direction on both sets and a larger gap on the held-out company, mostly from questions where the pipeline's one search missed, but still short of a detectable accuracy difference.
+- **BOX is now used** for agent mode: a later change to `prompts/agent.md` or the budgets cannot be validated on it as a held-out company again.
