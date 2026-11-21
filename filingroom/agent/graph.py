@@ -43,20 +43,14 @@ from langgraph.runtime import Runtime  # noqa: E402
 
 from .. import answer, llm  # noqa: E402
 from ..index import Index  # noqa: E402
-from . import tools  # noqa: E402
+from . import prompts, tools  # noqa: E402
 
-DEFAULT_MAX_MODEL_CALLS = 6
-DEFAULT_MAX_TOOL_CALLS = 8
-DEFAULT_MAX_TOKENS = 30_000
+from . import DEFAULT_MAX_MODEL_CALLS, DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_CALLS  # noqa: E402
 
-# TODO(increment 4): load these two from prompts/agent.md with the system prompt.
-LIMIT_TEXT = ("Limit reached: no more tool calls for this question. Answer now from the passages already shown, "
-              "or return not_found.")
-LAST_ROUND_TEXT = ("Those were your last tool results for this question. Answer now from the passages shown, "
-                   "or return not_found.")
-REPAIR_TEXT = ("None of the quotes in your answer could be found in the passage it names:\n{failed}\n\n"
-               "A quote must be copied word for word from the chunk it cites. Answer again with exact quotes "
-               "(you can reread a passage with get_chunk), or return not_found.")
+_NOTES = prompts.notes()  # prompts/agent_notes.md
+LIMIT_TEXT = _NOTES["limit"]            # results for tool requests refused by a budget
+LAST_ROUND_TEXT = _NOTES["last_round"]  # appended after the last allowed tool round
+REPAIR_TEXT = _NOTES["repair"]          # {failed} -> the quotes that did not verify
 
 
 # ---------------------------------------------------------------- state and context
@@ -232,7 +226,7 @@ def verify_node(state: State, runtime: Runtime[Context]) -> dict:
     if _wants_repair(state, ctx, row):
         failed = "\n".join(f'- [{c["chunk_id"]}] "{c["quote"]}"' for c in row["citations"])
         upd.update(repairs=state.get("repairs", 0) + 1, repair_pending=True, draft=None, error=None,
-                   messages=[{"role": "user", "content": REPAIR_TEXT.format(failed=failed)}])
+                   messages=[{"role": "user", "content": REPAIR_TEXT.replace("{failed}", failed)}])
     return upd
 
 

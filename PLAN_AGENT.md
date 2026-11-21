@@ -100,7 +100,7 @@ Things that are not data about the run (the ticker, the loaded `Index`, the `Cos
 
 1. **The model decides it is done.** It stops calling tools and returns the answer. This is the "genuinely agentic" part: nothing in code tells it how many searches to run.
 2. **Step limit.** Default 6 model calls (the forced final answer included) and 8 tool calls per question. The tool-call cap is checked by the edge out of `agent`; the model-call limit by the edge out of `tools`, so the last tool round still runs and the final call answers from it.
-3. **Token limit.** Default 30,000 tokens of exploration per question. The final answer call is always allowed, so the true ceiling is that plus one call; I will report the measured maximum. For scale, the pipeline uses about 10,100 input tokens per question today.
+3. **Token limit.** Default 100,000 tokens per question (30,000 at first; raised after increment 4's spike, see §14). The final answer call is always allowed, so the true ceiling is that plus one call; I will report the measured maximum. For scale, the pipeline uses about 10,100 input tokens per question today.
 4. **Existing spend caps.** Every call goes through `llm.py`, so `CostMeter.limit` and `FILINGROOM_MAX_USD` still stop the whole command.
 5. **`recursion_limit` backstop.** Set to a little over twice the model-call limit. If a routing bug ever loops, LangGraph raises `GraphRecursionError`; it is caught and the row becomes `status: error`.
 6. **Request timeout** on the SDK client. LangGraph's own node timeouts apply only to async nodes, and this code is sync.
@@ -297,7 +297,7 @@ Hand-off is through state: plan in, evidence out, verdict out. A further step is
 
 **Read in current docs or package metadata:** LangGraph version and dependencies; `StateGraph`, `TypedDict` state with reducers, `add_node`, `add_conditional_edges`, `START`/`END`; `recursion_limit` in the invoke config and `GraphRecursionError` from `langgraph.errors`; runtime context via `context_schema`; node timeouts are async-only; LangGraph does not require LangChain; the quickstart's hand-written tool node; Pydantic AI's built-in loop and `UsageLimits`; Anthropic tool use together with `output_config.format`, `strict` tools, and `tool_choice: none`.
 
-**Not yet verified, each assigned to an increment:** format-constraint behaviour on tool-calling turns for `claude-sonnet-5` (4); whether prompt caching engages at this prefix length (4); that `anthropic` 1.8.0 accepts every parameter used (4).
+**Not yet verified:** nothing assigned to increments 3 and 4 remains open; see the two sections below.
 
 ### Found in increment 3 (2026-11-21, langgraph 1.2.24, langsmith 0.16.0, langchain-core 1.8.4)
 
@@ -310,3 +310,21 @@ Each finding is pinned by a test in `tests/test_agent_graph.py` (class `SpikeTes
 - **State after `GraphRecursionError`.** `invoke` raises and returns nothing; without a checkpointer the run's state is gone (the docs are silent, and there is nothing to read back). `graph.run` therefore uses `stream(stream_mode="values")`, which yields the full state after every super-step, and keeps the last one. On the error it builds an `error` row that still reports the model calls, tool calls, tokens, spend, trace and seen chunks up to the last completed step (`GraphTest.test_recursion_backstop_gives_an_error_row_with_partial_counts`).
 - **Pipeline mode never loads the framework.** Importing `filingroom.cli`, `answer`, `pipeline`, `evaluate`, `filingroom.agent` and `filingroom.agent.tools`, then answering a question in pipeline mode, leaves `langgraph`, `langsmith` and `langchain_core` out of `sys.modules` (subprocess test).
 - **A bug the tests caught in my own routing, not in the framework.** With the repair edge on, a repair round that started with one model call left could ask for tools and then `finalize` would make call M + 1. A repair now needs two calls of budget left. Repair stays off by default.
+
+### Found in increment 4 (2026-11-21, `claude-sonnet-5`, effort medium, anthropic 1.8.0; paid, $0.113 in total)
+
+Three BILL questions through `agent.answer_question` and `llm.complete_tools`, logged turn by turn (scratch script, not in the repo): `rev_total` (a number), then `debt_instruments` (a list) and `na_gross_retention` (should be not found) in a second process a few minutes later.
+
+| Question | Result | Model calls | Tool calls | Tokens (budget measure) | Cost | Wall time |
+|---|---|---|---|---|---|---|
+| rev_total | answered, $1,653,160K, 1/1 quotes verified; matches the answer key | 3 | 2 | 17,807 | $0.0299 | 8.2 s |
+| debt_instruments | answered, four instruments, 9/9 quotes verified; matches the answer key | 6 | 4 | 59,150 | $0.0588 | 25.6 s |
+| na_gross_retention | not_found, notes the disclosed net retention rate instead; correct | 3 | 2 | 19,521 | $0.0240 | 7.8 s |
+
+- **`anthropic` 1.8.0 accepts every parameter used**: `tools`, `output_config` (format and effort), a top-level `cache_control`, a `cache_control` on the system block, `tool_choice: none`, and a per-request `timeout` via `with_options`.
+- **Assistant content sent back as dicts is accepted.** Blocks are dumped with `model_dump(mode="json", exclude_none=True)`; thinking blocks (empty text, as `display` defaults to omitted, plus a signature) went back unchanged on every later turn with no error. The SDK-object fallback is not needed.
+- **The format constraint and tools together behave cleanly.** On every tool-calling turn the response held only `thinking` and `tool_use` blocks, with no text at all. Every final turn was a single `text` block of schema-valid JSON. `_parse_draft` joining text blocks is therefore safe, and the `submit_answer` fallback is not needed.
+- **Prompt caching engages, within a question and across questions.** The tools-plus-system prefix is 2,778 tokens (more than my 1,500 estimate: the API adds its own tool-use preamble), above the 1,024 minimum. Within a question each call read the previous call's whole prompt from cache. The first call of each later question read exactly the 2,778-token prefix and wrote only the new question (225 to 283 tokens). The second process, started within five minutes of the first, also found the prefix warm.
+- **Conversation caching pays even on three-call questions.** Cost with only the system-prompt breakpoint (everything after the prefix at the plain input rate), from the same usage: rev_total $0.0302 vs $0.0299 actual; na_gross_retention $0.0284 vs $0.0240; debt_instruments $0.1037 vs $0.0588. A two-call question (search, then answer) would lose a little; none occurred. Automatic caching stays on.
+- **The token budget as defined binds early.** It sums input, cached input and output over calls, and each call resends the conversation, so it grows roughly with the square of the number of turns. debt_instruments passed 30,000 after its fifth call (cumulative 43,036) and its last tool request was refused; the forced answer was still complete. Effective cost was about $1.0 to $1.7 per million budget tokens. **Default raised to 100,000** (owner's decision, 2026-11-21): none of the three questions would have reached it, the six-call limit binds first, and at the measured rate it caps a question at about $0.10 to $0.17. To re-check on the increment 5 spot check, since three questions are not a distribution.
+- **Behaviour worth watching.** The model made one tool call per turn throughout, never several, despite the prompt's advice. It opened two of three questions with `list_filings`, spending a turn on it. It passed `topics` once as a bare string, which the tool accepts. No question cited a chunk it had not been shown.

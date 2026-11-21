@@ -31,6 +31,28 @@ def _effort(e: str) -> str | None:
     return None if e == "none" else e
 
 
+def _mode_args(p):
+    from .agent import DEFAULT_MAX_MODEL_CALLS, DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_CALLS  # no framework import
+    p.add_argument("--mode", choices=["pipeline", "agent"], default="pipeline",
+                   help="pipeline: code retrieves, one model call; agent: the model searches with tools in a loop")
+    p.add_argument("--max-steps", type=int, default=DEFAULT_MAX_MODEL_CALLS,
+                   help="agent mode: model calls per question, the final answer included")
+    p.add_argument("--max-tool-calls", type=int, default=DEFAULT_MAX_TOOL_CALLS, help="agent mode: per question")
+    p.add_argument("--max-tokens-per-question", type=int, default=DEFAULT_MAX_TOKENS,
+                   help="agent mode: exploration budget (input + cached input + output over all calls)")
+    p.add_argument("--repair", action="store_true", help="agent mode: one retry when no quote verifies")
+
+
+def _answer_fn(a):
+    """answer_question for the chosen mode, with the same call signature."""
+    if a.mode == "pipeline":
+        return answer.answer_question
+    from functools import partial
+    from . import agent
+    return partial(agent.answer_question, max_model_calls=a.max_steps, max_tool_calls=a.max_tool_calls,
+                   max_tokens=a.max_tokens_per_question, repair=a.repair)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(prog="fr", description="Diligence checklist agent over SEC filings.")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -59,6 +81,7 @@ def main() -> None:
     p.add_argument("question", help="checklist id (e.g. rev_total) or a question in quotes")
     p.add_argument("--final", action="store_true")
     _model_args(p)
+    _mode_args(p)
 
     p = sub.add_parser("run", help="answer the full checklist -> runs/<TICKER>_<time>.md/.json")
     p.add_argument("ticker")
@@ -134,9 +157,20 @@ def main() -> None:
         q = qs.get(a.question) or {"id": "adhoc", "category": "Ad hoc", "question": a.question,
                                    "answer_type": "text", "period": "current", "where": {}}
         meter = llm.CostMeter()
-        r = answer.answer_question(t, q, index.Index(t), meter, model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
+        r = _answer_fn(a)(t, q, index.Index(t), meter, model=a.model, effort=_effort(a.effort), k=a.k,
+                          expand=a.expand)
         print(json.dumps({k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence",
                                             "citations", "error")}, indent=2))
+        if r.get("mode") == "agent":
+            ag = r["agent"]
+            for t_ in ag["trace"]:
+                print(f"  turn {t_['turn']}: {t_['tool']} {json.dumps(t_['input'])} -> "
+                      f"{len(t_['shown'])} new, {len(t_['refs']) - len(t_['shown'])} already shown"
+                      f"{' (error)' if t_['error'] else ''}")
+            print(f"agent: {ag['model_calls']} model calls, {ag['tool_calls']} tool calls, {ag['tokens']:,} tokens, "
+                  f"stop={ag['stop']}, {r['seconds']} s, {len(r['retrieved'])} chunks seen"
+                  + (f", verified quotes from unseen chunks: {ag['cited_unseen']}" if ag["cited_unseen"] else ""))
+            print(f"usage: {json.dumps(meter.summary()['by_model'])}")
         print(f"cost ${meter.cost():.4f}")
 
     elif a.cmd == "run":

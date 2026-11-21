@@ -47,9 +47,10 @@ class CostMeter:
 
     def add(self, model: str, usage) -> None:
         global _command_spend
-        pin, pout = PRICES.get(model, PRICES["claude-opus-5"])
         with _spend_lock:
-            _command_spend += ((usage.input_tokens or 0) * pin + (usage.output_tokens or 0) * pout) / 1e6
+            # Cached tokens at their real rates. complete_json never asks for caching, so for it the cache terms
+            # are zero and this is the same sum as before.
+            _command_spend += usage_cost(model, usage)
         with self._lock:
             m = self.by_model.setdefault(model, {"calls": 0, "input": 0, "output": 0,
                                                  "cache_read": 0, "cache_write": 0})
@@ -69,6 +70,14 @@ class CostMeter:
 
     def summary(self) -> dict:
         return {"usd": round(self.cost(), 4), "by_model": self.by_model}
+
+
+def usage_cost(model: str, usage) -> float:
+    """Dollars for one response's usage: input, cache reads (0.1x), cache writes (1.25x, 5-minute TTL), output."""
+    pin, pout = PRICES.get(model, PRICES["claude-opus-5"])
+    n = (lambda k: (usage.get(k) if isinstance(usage, dict) else getattr(usage, k, 0)) or 0)
+    return (n("input_tokens") * pin + n("cache_read_input_tokens") * pin * 0.1
+            + n("cache_creation_input_tokens") * pin * 1.25 + n("output_tokens") * pout) / 1e6
 
 
 class LLMError(Exception):
@@ -108,3 +117,63 @@ def complete_json(model: str, system: str, user: str, schema: dict, meter: CostM
         return json.loads(text)
     except json.JSONDecodeError as e:
         raise LLMError(f"bad JSON: {e}: {text[:200]}")
+
+
+# ---------------------------------------------------------------- tool loop turns (agent mode)
+
+TOOLS_TIMEOUT_S = 180.0  # per request; the SDK retries a timeout like any connection error (max_retries=4)
+
+
+def _block(b) -> dict:
+    """A response content block as a dict that can be sent back unchanged. Thinking blocks keep their text and
+    signature exactly; fields the API returned as null (TextBlock.citations, ToolUseBlock.caller) are left out."""
+    return b.model_dump(mode="json", exclude_none=True)
+
+
+def complete_tools(model: str, system: str, messages: list, tools: list, meter: CostMeter, *,
+                   schema: dict, effort: str | None = None, tool_choice: dict | None = None,
+                   max_tokens: int = 16000, timeout: float = TOOLS_TIMEOUT_S) -> dict:
+    """One turn of a tool loop. The final answer is constrained to `schema`, as in complete_json.
+
+    Returns {content: [block dicts as returned], stop_reason, usage: {token counts}, usd, model}. Raises LLMError
+    on refusal, on max_tokens (a truncated turn may hold a truncated tool input, so it is never run), and on any
+    other stop that is not end_turn or tool_use. Same spend caps and refusal handling as complete_json.
+
+    Caching: tools render first, then system, then messages. One breakpoint on the system prompt caches the tools
+    and system for every question of one company; top-level automatic caching caches the growing conversation, so
+    each turn of a question reads the previous turn's prefix."""
+    if meter.limit is not None and meter.cost() >= meter.limit:
+        raise SystemExit(f"Stopped: this job reached its ${meter.limit:.2f} limit.")
+    if _command_spend >= MAX_USD_PER_COMMAND:
+        raise SystemExit(f"Stopped: this command has spent ${_command_spend:.2f}, over the "
+                         f"${MAX_USD_PER_COMMAND:.2f} cap (FILINGROOM_MAX_USD).")
+    output_config: dict = {"format": {"type": "json_schema", "schema": schema}}
+    if effort and model not in NO_EFFORT_MODELS:
+        output_config["effort"] = effort
+    kwargs = dict(model=model, max_tokens=max_tokens, tools=tools, messages=messages, output_config=output_config,
+                  system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+                  cache_control={"type": "ephemeral"})
+    if tool_choice is not None:
+        kwargs["tool_choice"] = tool_choice
+    c = client().with_options(timeout=timeout)
+    try:
+        if model in FALLBACK_MODELS:
+            resp = c.beta.messages.create(betas=["server-side-fallback-2026-07-01"], fallbacks="default", **kwargs)
+        else:
+            resp = c.messages.create(**kwargs)
+    except anthropic.BadRequestError as e:
+        if "credit balance" in str(e):
+            raise SystemExit("Out of Anthropic API credits: add credits under Billing in the Console, then rerun.")
+        raise
+    meter.add(resp.model, resp.usage)
+    if resp.stop_reason == "refusal":
+        raise LLMError(f"refusal: {getattr(resp.stop_details, 'category', None)}")
+    if resp.stop_reason == "max_tokens":
+        raise LLMError("hit max_tokens before finishing the turn")
+    if resp.stop_reason not in ("end_turn", "tool_use"):
+        raise LLMError(f"unexpected stop_reason: {resp.stop_reason}")
+    u = resp.usage
+    usage = {k: getattr(u, k, 0) or 0 for k in ("input_tokens", "output_tokens", "cache_read_input_tokens",
+                                                 "cache_creation_input_tokens")}
+    return {"content": [_block(b) for b in resp.content], "stop_reason": resp.stop_reason, "usage": usage,
+            "usd": usage_cost(resp.model, u), "model": resp.model}
