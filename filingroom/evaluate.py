@@ -374,6 +374,8 @@ def compare(base: dict, other: dict) -> dict:
         out["sides"][name] = {
             "label": f"{res.get('timestamp', '')} {res.get('label', '')}".strip(), "mode": res.get("mode", "pipeline"),
             "accuracy": c["accuracy"], "by_grade": by_grade, "unsupported": c["unsupported_claim_rate"],
+            "support": c["citation_support_rate"],
+            "partial": [r["id"] for r in rows if r.get("model_status") == "answered" and r.get("supported") in ("partial", "no")],
             "abstention_precision": c["abstention_precision"], "abstention_recall": c["abstention_recall"],
             "trust": tr, "usd_per_question": usd_q, "usd_note": usd_note, "latency": latency(rows),
             "model_calls": calls, "tool_calls": tools_, "hit_limit": hit, "agent": ag}
@@ -401,7 +403,8 @@ def compare_md(c: dict) -> str:
     b, o = c["sides"]["base"], c["sides"]["other"]
     rows = [("Accuracy", _rate(b["accuracy"]), _rate(o["accuracy"]))]
     rows += [(f"Accuracy: {g}", _rate(b["by_grade"][g]), _rate(o["by_grade"][g])) for g in ("numeric", "judged", "abstain")]
-    rows += [("Unsupported claims (of answered)", _rate(b["unsupported"]), _rate(o["unsupported"])),
+    rows += [("Citation support (judge: yes, of answered)", _rate(b["support"]), _rate(o["support"])),
+             ("Unsupported claims (of answered)", _rate(b["unsupported"]), _rate(o["unsupported"])),
              ("Abstention precision", _rate(b["abstention_precision"]), _rate(o["abstention_precision"])),
              ("Abstention recall", _rate(b["abstention_recall"]), _rate(o["abstention_recall"])),
              ("Verified but wrong (app status)", _rate(b["trust"]["verified_wrong"]), _rate(o["trust"]["verified_wrong"])),
@@ -422,6 +425,9 @@ def compare_md(c: dict) -> str:
         lines.append(f"- Right only in other: {', '.join(f['better'])}")
     if f["worse"]:
         lines.append(f"- Right only in base: {', '.join(f['worse'])}")
+    for side, name in ((b, "base"), (o, "other")):
+        if side["partial"]:
+            lines.append(f"- Only partly supported by their quotes ({name}): {', '.join(side['partial'])}")
     lines += ["", "Rates show the count and a 95% Wilson interval. Judge cost is not included in answer cost."]
     return "\n".join(lines)
 

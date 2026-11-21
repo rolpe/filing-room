@@ -1,0 +1,2651 @@
+{
+ "timestamp": "2026-11-21_1040",
+ "label": "agent20",
+ "note": "first 20-item stratified subset (seed 20261121), default budgets",
+ "tickers": [
+  "BILL",
+  "RPD"
+ ],
+ "model": "claude-sonnet-5",
+ "effort": "medium",
+ "k": null,
+ "expand": null,
+ "judge_model": "claude-opus-5",
+ "metrics": {
+  "n_items": 20,
+  "accuracy": 95.0,
+  "by_grade": {
+   "numeric": {
+    "n": 7,
+    "accuracy": 100.0
+   },
+   "judged": {
+    "n": 11,
+    "accuracy": 90.9
+   },
+   "abstain": {
+    "n": 2,
+    "accuracy": 100.0
+   }
+  },
+  "citation_verified_rate": 100.0,
+  "citation_support_rate": 94.4,
+  "unsupported_claim_rate": 0.0,
+  "abstention_precision": 100.0,
+  "abstention_recall": 100.0,
+  "false_abstentions": 0,
+  "retrieval_recall": 100.0,
+  "errors": 0,
+  "cost_usd": {
+   "answer": 0.6458,
+   "judge": 0.1364
+  },
+  "cost_per_company_usd": 0.3229,
+  "wall_seconds": 39.4,
+  "agent": {
+   "n": 20,
+   "model_calls_mean": 3.0,
+   "tool_calls_mean": 2.4,
+   "tokens_mean": 23707,
+   "tokens_max": 96869,
+   "usd_per_question": 0.0323,
+   "hit_limit": 1,
+   "stops": {
+    "model_done": 19,
+    "step_limit": 1
+   },
+   "repairs": 0,
+   "cited_unseen": 0,
+   "latency_s": {
+    "mean": 8.1,
+    "median": 6.5,
+    "p90": 10.9
+   }
+  }
+ },
+ "usage": {
+  "answer": {
+   "usd": 0.6458,
+   "by_model": {
+    "claude-sonnet-5": {
+     "calls": 60,
+     "input": 120,
+     "output": 13478,
+     "cache_read": 278520,
+     "cache_write": 182030
+    }
+   }
+  },
+  "judge": {
+   "usd": 0.1364,
+   "by_model": {
+    "claude-opus-5": {
+     "calls": 18,
+     "input": 22548,
+     "output": 945,
+     "cache_read": 0,
+     "cache_write": 0
+    }
+   }
+  }
+ },
+ "rows": [
+  {
+   "qid": "rev_total",
+   "ticker": "BILL",
+   "question": "What was total revenue for the most recent fiscal year?",
+   "category": "Revenue",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Total revenue for FY2026 (fiscal year ended June 30, 2026) was $1,653,160 thousand (approximately $1.65 billion), up from $1,462,570 thousand in FY2025.",
+   "value": "1653160000",
+   "parsed_value": 1653160000.0,
+   "unit": "USD",
+   "period": "FY2026 (ended 2026-06-30)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#007",
+     "quote": "Total revenue | 1,653,160 | 1,462,570 | 1,290,172",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "BILL_10K_FY2026#item8#035",
+    "BILL_10K_FY2026#item8#034",
+    "BILL_10K_FY2026#item8#006",
+    "BILL_10K_FY2026#item8#007",
+    "BILL_10K_FY2026#item8#029"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 6.1,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 17806,
+    "usd": 0.029905,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "total revenue",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#035",
+       "BILL_10K_FY2026#item8#034",
+       "BILL_10K_FY2026#item8#006",
+       "BILL_10K_FY2026#item8#007",
+       "BILL_10K_FY2026#item8#029"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#035",
+       "BILL_10K_FY2026#item8#034",
+       "BILL_10K_FY2026#item8#006",
+       "BILL_10K_FY2026#item8#007",
+       "BILL_10K_FY2026#item8#029"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:rev_total",
+   "grade": "numeric",
+   "expected": {
+    "value": 1653160000,
+    "unit": "USD",
+    "period": "FY2026"
+   },
+   "golden_verified": "xbrl-auto",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "The quote lists total revenue 1,653,160 and prior 1,462,570, backing the claims.",
+   "value_in_context": true
+  },
+  {
+   "qid": "cf_capex",
+   "ticker": "BILL",
+   "question": "What were capital expenditures for the most recent fiscal year, defined as purchases of property and equipment plus capitalized internal-use software development costs?",
+   "category": "Cash flow",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "For FY2026 (ended 6/30/2026), BILL's capital expenditures, defined as purchases of property and equipment plus capitalized internal-use software costs, totaled $61,156 thousand ($3,334K + $57,822K = $61,156K), i.e. approximately $61.2 million.",
+   "value": "61156000",
+   "parsed_value": 61156000.0,
+   "unit": "USD",
+   "period": "FY2026",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#023",
+     "quote": "Purchases of property and equipment | (3,334) | (4,335) | (976)\nCapitalization of internal-use software costs | (57,822) | (33,767) | (19,917)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "BILL_10K_FY2026#item8#024",
+    "BILL_10K_FY2026#item8#011",
+    "BILL_10K_FY2026#item8#044",
+    "BILL_10K_FY2026#item7#023",
+    "BILL_10K_FY2026#item8#059"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 7.7,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 17631,
+    "usd": 0.029675,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "purchases of property and equipment capitalized internal-use software",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#024",
+       "BILL_10K_FY2026#item8#011",
+       "BILL_10K_FY2026#item8#044",
+       "BILL_10K_FY2026#item7#023",
+       "BILL_10K_FY2026#item8#059"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#024",
+       "BILL_10K_FY2026#item8#011",
+       "BILL_10K_FY2026#item8#044",
+       "BILL_10K_FY2026#item7#023",
+       "BILL_10K_FY2026#item8#059"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:cf_capex",
+   "grade": "numeric",
+   "expected": {
+    "value": 61156000,
+    "unit": "USD",
+    "period": "FY2026"
+   },
+   "golden_verified": "xbrl-auto",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Quote provides both components summing to $61,156K.",
+   "value_in_context": null
+  },
+  {
+   "qid": "bs_cash",
+   "ticker": "BILL",
+   "question": "What were cash and cash equivalents at the end of the most recent fiscal year?",
+   "category": "Balance sheet",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Cash and cash equivalents at the end of FY2026 (as of June 30, 2026) were $1,031,053 thousand, i.e. approximately $1.031 billion.",
+   "value": "1031053000",
+   "parsed_value": 1031053000.0,
+   "unit": "USD",
+   "period": "FY2026 (ended 2026-06-30)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#012",
+     "quote": "Cash and cash equivalents | $1,031,053 | $1,038,346 | $985,941",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "BILL_10K_FY2026#item8#012",
+    "BILL_10K_FY2026#item8#017",
+    "BILL_10K_FY2026#item8#016",
+    "BILL_10K_FY2026#item8#018",
+    "BILL_10K_FY2025#item8#012"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 6.5,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 17451,
+    "usd": 0.029343,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "cash and cash equivalents",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#012",
+       "BILL_10K_FY2026#item8#017",
+       "BILL_10K_FY2026#item8#016",
+       "BILL_10K_FY2026#item8#018",
+       "BILL_10K_FY2025#item8#012"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#012",
+       "BILL_10K_FY2026#item8#017",
+       "BILL_10K_FY2026#item8#016",
+       "BILL_10K_FY2026#item8#018",
+       "BILL_10K_FY2025#item8#012"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:bs_cash",
+   "grade": "numeric",
+   "expected": {
+    "value": 1031053000,
+    "unit": "USD",
+    "period": "FY2026"
+   },
+   "golden_verified": "xbrl-auto",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "The quote shows cash and cash equivalents of $1,031,053 (thousand) as the most recent value, backing the answer.",
+   "value_in_context": true
+  },
+  {
+   "qid": "net_income",
+   "ticker": "RPD",
+   "question": "What was GAAP net income (or loss) for the most recent fiscal year?",
+   "category": "Margins",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Rapid7 reported GAAP net income of $23.381 million for fiscal year 2025 (ended December 31, 2025).",
+   "value": "23381000",
+   "parsed_value": 23381000.0,
+   "unit": "USD",
+   "period": "FY2025",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#005",
+     "quote": "Net income (loss) | $23,381 | $25,526 | $(152,815)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "RPD_10K_FY2025#item8#006",
+    "RPD_10K_FY2025#item8#028",
+    "RPD_10K_FY2025#item8#067",
+    "RPD_10K_FY2025#item8#005",
+    "RPD_10K_FY2025#item8#068"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 4.9,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 16745,
+    "usd": 0.027011,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "net loss income",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#006",
+       "RPD_10K_FY2025#item8#028",
+       "RPD_10K_FY2025#item8#067",
+       "RPD_10K_FY2025#item8#005",
+       "RPD_10K_FY2025#item8#068"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#006",
+       "RPD_10K_FY2025#item8#028",
+       "RPD_10K_FY2025#item8#067",
+       "RPD_10K_FY2025#item8#005",
+       "RPD_10K_FY2025#item8#068"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:net_income",
+   "grade": "numeric",
+   "expected": {
+    "value": 23381000,
+    "unit": "USD",
+    "period": "FY2025"
+   },
+   "golden_verified": "xbrl-auto",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Quote shows net income $23,381 thousand matching the claim.",
+   "value_in_context": true
+  },
+  {
+   "qid": "cf_capex",
+   "ticker": "RPD",
+   "question": "What were capital expenditures for the most recent fiscal year, defined as purchases of property and equipment plus capitalized internal-use software development costs?",
+   "category": "Cash flow",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "For FY2025, Rapid7 spent $7.599 million on purchases of property and equipment and $16.106 million on capitalized internal-use software costs, for total capital expenditures of approximately $23.705 million.",
+   "value": "23705000",
+   "parsed_value": 23705000.0,
+   "unit": "USD",
+   "period": "FY2025 (year ended December 31, 2025)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item7#020",
+     "quote": "Less: Purchases of property and equipment | (7,599) | (3,425) | (4,366)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operati"
+    },
+    {
+     "chunk_id": "RPD_10K_FY2025#item7#020",
+     "quote": "Less: Capitalized internal-use software costs | (16,106) | (14,162) | (15,878)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 7. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operati"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "RPD_10K_FY2025#item8#020",
+    "RPD_10K_FY2025#item8#039",
+    "RPD_10K_FY2024#item8#020",
+    "RPD_10K_FY2025#item8#030",
+    "RPD_10K_FY2025#item7#020"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 5.6,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 1,
+    "tokens": 11069,
+    "usd": 0.023627,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "purchases of property and equipment capitalized internal-use software development costs",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ]
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#020",
+       "RPD_10K_FY2025#item8#039",
+       "RPD_10K_FY2024#item8#020",
+       "RPD_10K_FY2025#item8#030",
+       "RPD_10K_FY2025#item7#020"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#020",
+       "RPD_10K_FY2025#item8#039",
+       "RPD_10K_FY2024#item8#020",
+       "RPD_10K_FY2025#item8#030",
+       "RPD_10K_FY2025#item7#020"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:cf_capex",
+   "grade": "numeric",
+   "expected": {
+    "value": 23705000,
+    "unit": "USD",
+    "period": "FY2025"
+   },
+   "golden_verified": "xbrl-auto",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Both components are directly quoted and sum to the stated total.",
+   "value_in_context": null
+  },
+  {
+   "qid": "emp_count",
+   "ticker": "BILL",
+   "question": "How many employees did the company have at the end of the most recent fiscal year?",
+   "category": "People",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "As of June 30, 2026, the end of fiscal year 2026, BILL Holdings had a total of 1,683 employees.",
+   "value": "1683",
+   "parsed_value": 1683.0,
+   "unit": "count",
+   "period": "FY2026 (as of 2026-06-30)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item1#021",
+     "quote": "As of June 30, 2026, we had a total of 1,683 employees, including those working in two offices in the U.S.: San Jose, CA, and Draper, UT; and others working remotely.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 1. BUSINESS"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "BILL_10K_FY2026#item1#021",
+    "BILL_10K_FY2026#item1#023",
+    "BILL_10K_FY2026#item7#032",
+    "BILL_10K_FY2026#item8#009",
+    "BILL_10K_FY2026#item7#024"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 5.6,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 17043,
+    "usd": 0.028207,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "employees as of June 30, 2026 human capital",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": [
+        "business"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item1#021",
+       "BILL_10K_FY2026#item1#023",
+       "BILL_10K_FY2026#item7#032",
+       "BILL_10K_FY2026#item8#009",
+       "BILL_10K_FY2026#item7#024"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item1#021",
+       "BILL_10K_FY2026#item1#023",
+       "BILL_10K_FY2026#item7#032",
+       "BILL_10K_FY2026#item8#009",
+       "BILL_10K_FY2026#item7#024"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:emp_count",
+   "grade": "numeric",
+   "expected": {
+    "value": 1683,
+    "unit": "count",
+    "period": "FY2026"
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Quote directly states 1,683 employees as of June 30, 2026.",
+   "value_in_context": true
+  },
+  {
+   "qid": "na_gross_retention",
+   "ticker": "BILL",
+   "question": "What is the company's gross dollar retention rate (revenue retained from existing customers excluding expansion)?",
+   "category": "Abstention",
+   "status": "not_found",
+   "model_status": "not_found",
+   "answer": "BILL Holdings does not disclose a separate 'gross dollar retention rate' metric in its SEC filings. The company only reports a 'net dollar-based retention rate,' which includes upsells (expansion) net of contraction/attrition, not a gross retention figure that excludes expansion. For reference, the net dollar-based retention rate was 95% in fiscal 2026 (vs. 94% in fiscal 2025 and 92% in fiscal 2024), but this is not the gross retention metric requested.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "percent",
+   "period": "FY2026",
+   "confidence": "low",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#006",
+     "quote": "Our net dollar-based retention rate was 95%, 94%, and 92% during fiscal 2026, 2025, and 2024, respectively.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#006",
+     "quote": "Current Period Revenue includes any upsells and is net of contraction or attrition, but excludes revenue from new customers and excludes interest earned on funds held for customers.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "BILL_10K_FY2026#item7#006",
+    "BILL_10K_FY2025#item7#006",
+    "BILL_10K_FY2025#item7#018",
+    "BILL_10Q_Q1FY2026#partI-item2#014",
+    "BILL_10K_FY2026#item7#018",
+    "BILL_10Q_Q1FY2026#partI-item3#004",
+    "BILL_10Q_Q2FY2026#partI-item3#005",
+    "BILL_10Q_Q3FY2026#partI-item3#004",
+    "BILL_DEF14A_2025#proxy#072",
+    "BILL_10Q_Q3FY2025#partI-item2#021",
+    "BILL_10K_FY2025#item7#022"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 8.4,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 3,
+    "tokens": 26338,
+    "usd": 0.034307,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "gross revenue retention rate"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item7#006",
+       "BILL_10K_FY2025#item7#006",
+       "BILL_10K_FY2025#item7#018",
+       "BILL_10Q_Q1FY2026#partI-item2#014",
+       "BILL_10K_FY2026#item7#018"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#006",
+       "BILL_10K_FY2025#item7#006",
+       "BILL_10K_FY2025#item7#018",
+       "BILL_10Q_Q1FY2026#partI-item2#014",
+       "BILL_10K_FY2026#item7#018"
+      ],
+      "error": false
+     },
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "dollar retention rate existing customers"
+      },
+      "shown": [
+       "BILL_10Q_Q1FY2026#partI-item3#004",
+       "BILL_10Q_Q2FY2026#partI-item3#005",
+       "BILL_10Q_Q3FY2026#partI-item3#004"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#006",
+       "BILL_10K_FY2025#item7#006",
+       "BILL_10Q_Q1FY2026#partI-item3#004",
+       "BILL_10Q_Q2FY2026#partI-item3#005",
+       "BILL_10Q_Q3FY2026#partI-item3#004"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "gross retention excluding expansion upsell churn"
+      },
+      "shown": [
+       "BILL_DEF14A_2025#proxy#072",
+       "BILL_10Q_Q3FY2025#partI-item2#021",
+       "BILL_10K_FY2025#item7#022"
+      ],
+      "refs": [
+       "BILL_10K_FY2025#item7#006",
+       "BILL_10K_FY2026#item7#006",
+       "BILL_DEF14A_2025#proxy#072",
+       "BILL_10Q_Q3FY2025#partI-item2#021",
+       "BILL_10K_FY2025#item7#022"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:na_gross_retention",
+   "grade": "abstain",
+   "expected": {
+    "not_found": true,
+    "text": "Not disclosed; BILL reports only a net dollar-based retention rate."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": null,
+   "judge_reason": "",
+   "value_in_context": null
+  },
+  {
+   "qid": "rev_rpo",
+   "ticker": "RPD",
+   "question": "What were remaining performance obligations (RPO) at the end of the most recent fiscal year?",
+   "category": "Revenue",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "As of December 31, 2025, Rapid7's total remaining performance obligations (RPO) were approximately $854.0 million, comprised of $578,964 thousand expected to be recognized in the next twelve months and $275,062 thousand thereafter.",
+   "value": "854026000",
+   "parsed_value": 854026000.0,
+   "unit": "USD",
+   "period": "FY2025 (as of 2025-12-31)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#031",
+     "quote": "Next Twelve Months | Thereafter\nProduct subscriptions | $565,859 | $270,397\nProfessional services | 13,105 | 4,665\nTotal | $578,964 | $275,062",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "RPD_10K_FY2025#item8#016",
+    "RPD_10K_FY2025#item8#031",
+    "RPD_10K_FY2024#item8#016",
+    "RPD_10K_FY2025#item8#014",
+    "RPD_10K_FY2025#item8#033"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 8.8,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 4,
+    "tool_calls": 3,
+    "tokens": 25686,
+    "usd": 0.024791,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "remaining performance obligations",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#016",
+       "RPD_10K_FY2025#item8#031",
+       "RPD_10K_FY2024#item8#016",
+       "RPD_10K_FY2025#item8#014",
+       "RPD_10K_FY2025#item8#033"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#016",
+       "RPD_10K_FY2025#item8#031",
+       "RPD_10K_FY2024#item8#016",
+       "RPD_10K_FY2025#item8#014",
+       "RPD_10K_FY2025#item8#033"
+      ],
+      "error": false
+     },
+     {
+      "turn": 3,
+      "tool": "get_chunk",
+      "input": {
+       "chunk_id": "RPD_10K_FY2025#item8#031",
+       "neighbors": 0
+      },
+      "shown": [],
+      "refs": [
+       "RPD_10K_FY2025#item8#031"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:rev_rpo",
+   "grade": "numeric",
+   "expected": {
+    "value": 854026000,
+    "unit": "USD",
+    "period": "FY2025"
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Quote gives 578,964 + 275,062 = 854,026 thousand, supporting the total.",
+   "value_in_context": null
+  },
+  {
+   "qid": "cf_fcf",
+   "ticker": "BILL",
+   "question": "Does the company report free cash flow? If so, how does it define free cash flow and what was it for the most recent fiscal year?",
+   "category": "Cash flow",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Yes. BILL Holdings defines free cash flow (a non-GAAP measure) as net cash provided by operating activities, adjusted by (minus) purchases of property and equipment and capitalization of internal-use software costs. For fiscal year 2026 (ended June 30, 2026), free cash flow was $354.676 million, computed as net cash provided by operating activities of $415.832 million less purchases of property and equipment of $3.334 million and less capitalization of internal-use software costs of $57.822 million.",
+   "value": "354676000",
+   "parsed_value": 354676000.0,
+   "unit": "USD",
+   "period": "FY2026 (fiscal year ended 2026-06-30)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#023",
+     "quote": "Free cash flow is a non-GAAP measure defined as net cash provided by operating activities, adjusted by purchases of property and equipment and capitalization of internal-use software costs.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#023",
+     "quote": "Net cash provided by operating activities | $415,832 | $350,644 | $278,771\nPurchases of property and equipment | (3,334) | (4,335) | (976)\nCapitalization of internal-use software costs | (57,822) | (33,767) | (19,917)\nFree cash flow | $354,676 | $312,542 | $257,878",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "BILL_10K_FY2026#item7#023",
+    "BILL_10K_FY2025#item7#023",
+    "BILL_10K_FY2026#item7#022",
+    "BILL_10K_FY2025#item7#022",
+    "BILL_10K_FY2026#item7#026",
+    "BILL_8K_Q4FY2026#press_release#008",
+    "BILL_8K_Q4FY2026#press_release#018",
+    "BILL_8K_Q4FY2026#press_release#006",
+    "BILL_8K_Q4FY2026#press_release#014",
+    "BILL_8K_Q4FY2026#press_release#007"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 7.8,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 3,
+    "tokens": 21681,
+    "usd": 0.036044,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "free cash flow",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": "mdna"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item7#023",
+       "BILL_10K_FY2025#item7#023",
+       "BILL_10K_FY2026#item7#022",
+       "BILL_10K_FY2025#item7#022",
+       "BILL_10K_FY2026#item7#026"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#023",
+       "BILL_10K_FY2025#item7#023",
+       "BILL_10K_FY2026#item7#022",
+       "BILL_10K_FY2025#item7#022",
+       "BILL_10K_FY2026#item7#026"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "free cash flow non-GAAP",
+       "forms": [
+        "8-K"
+       ],
+       "periods": [
+        "Q4 FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_8K_Q4FY2026#press_release#008",
+       "BILL_8K_Q4FY2026#press_release#018",
+       "BILL_8K_Q4FY2026#press_release#006",
+       "BILL_8K_Q4FY2026#press_release#014",
+       "BILL_8K_Q4FY2026#press_release#007"
+      ],
+      "refs": [
+       "BILL_8K_Q4FY2026#press_release#008",
+       "BILL_8K_Q4FY2026#press_release#018",
+       "BILL_8K_Q4FY2026#press_release#006",
+       "BILL_8K_Q4FY2026#press_release#014",
+       "BILL_8K_Q4FY2026#press_release#007"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:cf_fcf",
+   "grade": "judged",
+   "expected": {
+    "text": "Yes. BILL reports free cash flow as a non-GAAP liquidity measure defined as net cash provided by operating activities, adjusted by (i.e., less) purchases of property and equipment and capitalization of internal-use software costs. FY2026 free cash flow was $354.7 million ($354,676K) = operating cash flow $415.8M - purchases of property and equipment $3.3M - capitalized internal-use software $57.8M (FY2025: $312.5M). MUST include: that FCF is reported, the definition (operating cash flow less capex/purchases of property and equipment and capitalized internal-use software), and FY2026 FCF of ~$354.7M. OPTIONAL: components, FY2025 comparison, Q4 FCF $96.5M."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Matches expected definition and FY2026 FCF of $354.676M; quotes fully support.",
+   "value_in_context": null
+  },
+  {
+   "qid": "debt_instruments",
+   "ticker": "BILL",
+   "question": "What debt instruments were outstanding at the end of the most recent fiscal year? For each, give the principal outstanding, interest rate, and maturity.",
+   "category": "Debt",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "At fiscal year-end June 30, 2026, BILL Holdings had the following debt instruments outstanding: (1) 2030 Notes \u2014 $1,400,000,000 aggregate principal of 0% convertible senior notes due April 1, 2030 (annualized effective interest rate 0.32%, ~3.8 years remaining term); (2) 2027 Notes \u2014 $123,548,000 aggregate principal of 0% convertible senior notes due April 1, 2027 (annualized effective interest rate 0.48%, ~0.8 years remaining term); (3) 2021 Credit Facility (revolving, Divvy Peach/Goldman Sachs) \u2014 $180,000,000 outstanding, bearing SOFR plus 1.95% margin (effective rate 6.43% at 6/30/2026), maturing May 2028; (4) 2025 Credit Facility (revolving, Odin Financing/JPMorgan) \u2014 $150,000,000 outstanding, bearing SOFR plus 1.80% margin (effective rate 6.05% at 6/30/2026), maturing November 2027. The 2025 Notes (0% convertible senior notes) matured and were fully repaid/settled in cash on December 1, 2025, leaving $0 outstanding at fiscal year-end.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "USD",
+   "period": "FY2026 (as of 2026-06-30)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#046",
+     "quote": "2027 Notes, principal | 123,548 | \u2014 | 0.8 | 0.48%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#046",
+     "quote": "2030 Notes, principal | 1,400,000 | 1,400,000 | 3.8 | 0.32%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#046",
+     "quote": "2021 Credit Facility | 180,000 | \u2014 | 1.8 | 6.43%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#046",
+     "quote": "2025 Credit Facility | 150,000 | \u2014 | 1.4 | 6.05%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#029",
+     "quote": "On December 6, 2024, we issued $1.4 billion in aggregate principal amount of our 0% convertible senior notes due on April 01, 2030.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#030",
+     "quote": "after such cancellation, $123.5 million aggregate principal amount of 2027 Notes remains outstanding.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item7#031",
+     "quote": "On December 1, 2025, upon maturity of the 2025 Notes, we settled the remaining $33.5 million aggregate principal amount of the 2025 Notes in cash.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 7. MANAGEMENT\u2019S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION AND RESULTS OF OPERATI"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#056",
+     "quote": "The 2021 Credit Facility matures in May 2028 or earlier pursuant to the agreement and has a total commitment of $ 300.0 million... Total outstanding borrowings were $ 180.0 million as of June 30, 2026.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#056",
+     "quote": "The 2025 Credit Facility matures in November 2027 or earlier pursuant to the agreement and has a total commitment of $ 300.0 million... Total outstanding borrowings were $ 150.0 million as of June 30, 2026.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    }
+   ],
+   "citations_verified": 9,
+   "retrieved": [
+    "BILL_10K_FY2026#item7#030",
+    "BILL_10K_FY2026#item7#029",
+    "BILL_10K_FY2026#item8#046",
+    "BILL_10K_FY2026#item8#027",
+    "BILL_10K_FY2026#item7#031",
+    "BILL_10K_FY2026#item8#053",
+    "BILL_10K_FY2026#item8#049",
+    "BILL_10K_FY2026#item1a#088",
+    "BILL_10K_FY2026#item8#045",
+    "BILL_10K_FY2026#item7#032",
+    "BILL_10K_FY2026#item8#056",
+    "BILL_10K_FY2025#item7#032",
+    "BILL_10K_FY2025#item8#059"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 19.3,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 5,
+    "tool_calls": 5,
+    "tokens": 55486,
+    "usd": 0.06131,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "Convertible Notes principal amount interest rate maturity",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item7#030",
+       "BILL_10K_FY2026#item7#029",
+       "BILL_10K_FY2026#item8#046",
+       "BILL_10K_FY2026#item8#027",
+       "BILL_10K_FY2026#item7#031"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#030",
+       "BILL_10K_FY2026#item7#029",
+       "BILL_10K_FY2026#item8#046",
+       "BILL_10K_FY2026#item8#027",
+       "BILL_10K_FY2026#item7#031"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "2025 Notes 2027 Notes 2028 Notes debt outstanding",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#053",
+       "BILL_10K_FY2026#item8#049",
+       "BILL_10K_FY2026#item1a#088",
+       "BILL_10K_FY2026#item8#045"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#053",
+       "BILL_10K_FY2026#item8#046",
+       "BILL_10K_FY2026#item8#049",
+       "BILL_10K_FY2026#item1a#088",
+       "BILL_10K_FY2026#item8#045"
+      ],
+      "error": false
+     },
+     {
+      "turn": 3,
+      "tool": "search_filings",
+      "input": {
+       "query": "2025 Credit Facility borrowing capacity interest rate matures",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item7#032",
+       "BILL_10K_FY2026#item8#056",
+       "BILL_10K_FY2025#item7#032",
+       "BILL_10K_FY2025#item8#059"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#032",
+       "BILL_10K_FY2026#item7#031",
+       "BILL_10K_FY2026#item8#056",
+       "BILL_10K_FY2025#item7#032",
+       "BILL_10K_FY2025#item8#059"
+      ],
+      "error": false
+     },
+     {
+      "turn": 4,
+      "tool": "get_chunk",
+      "input": {
+       "chunk_id": "BILL_10K_FY2026#item8#046",
+       "neighbors": 0
+      },
+      "shown": [],
+      "refs": [
+       "BILL_10K_FY2026#item8#046"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:debt_instruments",
+   "grade": "judged",
+   "expected": {
+    "text": "At June 30, 2026 BILL had four debt instruments outstanding (total carrying value $1,836.1M): (1) 2027 Convertible Senior Notes: $123.5M principal ($123,548K), 0% coupon (0.48% effective rate), due April 1, 2027 (classified current); (2) 2030 Convertible Senior Notes: $1.4B principal ($1,400,000K), 0% coupon (0.32% effective), due April 1, 2030; (3) 2021 Credit Facility (Divvy Peach / Goldman Sachs revolving facility secured by BILL Divvy Card receivables): $180.0M drawn of $300M commitment, SOFR (three-month) + 1.95% margin (6.43% effective at June 30, 2026), matures May 2028; (4) 2025 Credit Facility (Odin Financing / JPMorgan revolving facility secured by card receivables): $150.0M drawn of $300M commitment, SOFR (one-month) + 1.80% margin (6.05% effective), matures November 2027. MUST include all four instruments with principal, rate and maturity (for the revolvers, SOFR-plus-margin or the effective rate is acceptable). OPTIONAL: effective rates, conversion prices ($414.80 / $119.45), commitments, total $330.0M drawn. The 2025 Notes are NOT outstanding (remaining $33.5M settled in cash at maturity on December 1, 2025)."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "All four instruments with principal, rates, and maturities match the expected answer; quotes back the figures, with SOFR margins being minor unquoted detail.",
+   "value_in_context": null
+  },
+  {
+   "qid": "comp_bonus_metrics",
+   "ticker": "BILL",
+   "question": "Which performance metrics determine executives' annual cash bonus and performance-based equity awards?",
+   "category": "Compensation",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "For fiscal 2025, BILL's annual cash bonus program (Fiscal 2025 Bonus Program) was based equally on two corporate financial metrics: Core Revenue and EBITDA Less Float, with an individual performance component also considered. Performance-based equity (PSUs) for fiscal 2025 consisted of two types: (1) Financial PSUs, earned based on Core Revenue growth, subject to a cap (100% of target payout) unless a Non-GAAP Operating Income threshold ($190.7 million) was exceeded; and (2) Relative TSR PSUs, earned based on the company's total stockholder return percentile rank relative to the Russell 3000 index over a three-year performance period.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "",
+   "period": "FY2025",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_DEF14A_2025#proxy#085",
+     "quote": "our Named Executive Officers were eligible to earn a cash bonus in fiscal 2025 based on our level of achievement of both revenue growth and a profitability metric (weighted equally)...specifically, Core Revenue and EBITDA Less Float",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000119312525251571/d25146ddef14a.htm",
+     "doc_id": "BILL_DEF14A_2025",
+     "section": "proxy"
+    },
+    {
+     "chunk_id": "BILL_DEF14A_2025#proxy#073",
+     "quote": "PSU - Financial | ... | Metrics | Core Revenue, subject to Non-GAAP Operating Income Threshold",
+     "verified": false,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000119312525251571/d25146ddef14a.htm",
+     "doc_id": "BILL_DEF14A_2025",
+     "section": "proxy"
+    },
+    {
+     "chunk_id": "BILL_DEF14A_2025#proxy#073",
+     "quote": "PSU - Relative TSR | ... | Metrics | Total stockholder return percentile rank against companies in the Russell 3000 index",
+     "verified": false,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000119312525251571/d25146ddef14a.htm",
+     "doc_id": "BILL_DEF14A_2025",
+     "section": "proxy"
+    },
+    {
+     "chunk_id": "BILL_DEF14A_2025#proxy#091",
+     "quote": "Fiscal 2025 Financial PSU achievement was capped at a maximum of 100% of target if our Non-GAAP Operating Income did not exceed a $190.7 million threshold during the year.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000119312525251571/d25146ddef14a.htm",
+     "doc_id": "BILL_DEF14A_2025",
+     "section": "proxy"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "BILL_DEF14A_2025#proxy#087",
+    "BILL_DEF14A_2025#proxy#104",
+    "BILL_DEF14A_2025#proxy#094",
+    "BILL_DEF14A_2025#proxy#085",
+    "BILL_DEF14A_2025#proxy#070",
+    "BILL_DEF14A_2025#proxy#112",
+    "BILL_DEF14A_2025#proxy#073",
+    "BILL_DEF14A_2025#proxy#091",
+    "BILL_DEF14A_2025#proxy#115",
+    "BILL_DEF14A_2025#proxy#077"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 10.9,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 23146,
+    "usd": 0.034925,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "performance metrics annual cash bonus performance-based equity awards",
+       "forms": [
+        "DEF 14A"
+       ],
+       "periods": [
+        "2025 annual meeting"
+       ]
+      },
+      "shown": [
+       "BILL_DEF14A_2025#proxy#087",
+       "BILL_DEF14A_2025#proxy#104",
+       "BILL_DEF14A_2025#proxy#094",
+       "BILL_DEF14A_2025#proxy#085",
+       "BILL_DEF14A_2025#proxy#070"
+      ],
+      "refs": [
+       "BILL_DEF14A_2025#proxy#087",
+       "BILL_DEF14A_2025#proxy#104",
+       "BILL_DEF14A_2025#proxy#094",
+       "BILL_DEF14A_2025#proxy#085",
+       "BILL_DEF14A_2025#proxy#070"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "PSU performance metrics fiscal 2025 financial PSUs vesting conditions",
+       "forms": [
+        "DEF 14A"
+       ],
+       "periods": [
+        "2025 annual meeting"
+       ]
+      },
+      "shown": [
+       "BILL_DEF14A_2025#proxy#112",
+       "BILL_DEF14A_2025#proxy#073",
+       "BILL_DEF14A_2025#proxy#091",
+       "BILL_DEF14A_2025#proxy#115",
+       "BILL_DEF14A_2025#proxy#077"
+      ],
+      "refs": [
+       "BILL_DEF14A_2025#proxy#112",
+       "BILL_DEF14A_2025#proxy#073",
+       "BILL_DEF14A_2025#proxy#091",
+       "BILL_DEF14A_2025#proxy#115",
+       "BILL_DEF14A_2025#proxy#077"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:comp_bonus_metrics",
+   "grade": "judged",
+   "expected": {
+    "text": "Per the 2025 proxy (fiscal 2025 program): Annual cash bonus (Fiscal 2025 Bonus Program) = Core Revenue (50% weight; target $1,300.0M) and EBITDA Less Float (50% weight; target $41.0M), with each NEO's payout adjustable up or down by up to 20% for individual performance (FY25 payout 125.1%). Performance-based equity: (a) Financial PSUs earned on one-year Core Revenue (100% weighting; target $1,300.0M) with a Non-GAAP Operating Income threshold ($190.7M) that must be exceeded to pay above target (payout 100.2%); (b) TSR PSUs earned on relative total stockholder return vs. the Russell 3000 index over a three-year period (July 1, 2024 - June 30, 2027). MUST include: Core Revenue and EBITDA Less Float for the bonus; Core Revenue (with Non-GAAP Operating Income guardrail) and relative TSR for PSUs. OPTIONAL: weights, targets, payouts, individual-performance modifier, definition of EBITDA Less Float."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "partial",
+   "judge_reason": "Quotes back the bonus metrics and the Non-GAAP Operating Income cap, but no quote supports the relative TSR PSUs vs. Russell 3000 over three years.",
+   "value_in_context": null
+  },
+  {
+   "qid": "gov_holders",
+   "ticker": "BILL",
+   "question": "Which holders beneficially own more than 5% of the common stock according to the latest proxy statement?",
+   "category": "Governance",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "According to BILL Holdings' DEF 14A for the 2025 annual meeting, four stockholders beneficially owned more than 5% of common stock as of October 20, 2025: The Vanguard Group, Inc. (10,934,053 shares, 10.9%); BlackRock, Inc. (9,039,776 shares, 9.0%); entities affiliated with Starboard Value LP (8,639,900 shares, 8.6%); and ER Collective Holdings, LLC (7,668,300 shares, 7.6%).",
+   "value": "4",
+   "parsed_value": 4.0,
+   "unit": "count",
+   "period": "as of October 20, 2025 (FY2025 proxy, DEF 14A filed 2025-10-27)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "BILL_DEF14A_2025#proxy#055",
+     "quote": "5% Stockholders:\nThe Vanguard Group, Inc. (15) | 10,934,053 | 10.9%\nBlackRock, Inc. (16) | 9,039,776 | 9.0%\nEntities affiliated with Starboard Value LP (17) | 8,639,900 | 8.6%\nER Collective Holdings, LLC (18) | 7,668,300 | 7.6%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000119312525251571/d25146ddef14a.htm",
+     "doc_id": "BILL_DEF14A_2025",
+     "section": "proxy"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "BILL_DEF14A_2025#proxy#054",
+    "BILL_DEF14A_2025#proxy#128",
+    "BILL_DEF14A_2025#proxy#130",
+    "BILL_DEF14A_2025#proxy#056",
+    "BILL_DEF14A_2025#proxy#055"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 6.1,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 1,
+    "tokens": 11296,
+    "usd": 0.018996,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "5% beneficial owners common stock",
+       "forms": [
+        "DEF 14A"
+       ],
+       "topics": [
+        "ownership"
+       ]
+      },
+      "shown": [
+       "BILL_DEF14A_2025#proxy#054",
+       "BILL_DEF14A_2025#proxy#128",
+       "BILL_DEF14A_2025#proxy#130",
+       "BILL_DEF14A_2025#proxy#056",
+       "BILL_DEF14A_2025#proxy#055"
+      ],
+      "refs": [
+       "BILL_DEF14A_2025#proxy#054",
+       "BILL_DEF14A_2025#proxy#128",
+       "BILL_DEF14A_2025#proxy#130",
+       "BILL_DEF14A_2025#proxy#056",
+       "BILL_DEF14A_2025#proxy#055"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:gov_holders",
+   "grade": "judged",
+   "expected": {
+    "text": "Per the 2025 proxy (ownership as of October 20, 2025; 100,378,848 shares outstanding), holders of more than 5%: The Vanguard Group, Inc. - 10,934,053 shares (10.9%); BlackRock, Inc. - 9,039,776 shares (9.0%); entities affiliated with Starboard Value LP - 8,639,900 shares (8.6%, incl. 1,614,152 shares under forward purchase contracts; also attributed to director Peter Feld); ER Collective Holdings, LLC - 7,668,300 shares (7.6%). MUST include all four holders (Vanguard, BlackRock, Starboard, ER Collective Holdings). OPTIONAL: share counts/percentages, the as-of date, CEO Ren\u00e9 Lacerte's 3.7% (below 5%, should not be listed as a 5% holder)."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "All four holders with matching figures; quote backs the claims.",
+   "value_in_context": null
+  },
+  {
+   "qid": "ma_recent",
+   "ticker": "BILL",
+   "question": "What acquisitions did the company complete during the two most recent fiscal years, and what was the purchase consideration for each?",
+   "category": "M&A",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Based on the FY2026 10-K, BILL Holdings did not complete any acquisitions during fiscal years 2025 or 2026. Goodwill remained flat at $2.4 billion as of both June 30, 2026 and June 30, 2025 (consistent with no new acquisition-related goodwill being added), and the consolidated statements of cash flows for FY2026 and FY2025 show no 'cash paid for acquisition' line item (that line only appears for fiscal 2023, at $28,902 thousand, net of acquired cash). No acquisition/business-combination note disclosing a new deal in FY2025 or FY2026 was found in the filing.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "",
+   "period": "FY2025 and FY2026 (fiscal years ended 2025-06-30 and 2026-06-30)",
+   "confidence": "medium",
+   "citations": [
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#045",
+     "quote": "Goodwill, which is primarily attributable to expected synergies from acquisitions and is not deductible for U.S. federal and state income tax purposes, consisted of $ 2.4 billion as of each of June 30, 2026 and 2025.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2025#item8#011",
+     "quote": "Cash paid for acquisition, net of acquired cash and cash equivalents | \u2014 | \u2014 | (28,902)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000178635225000037/bill-20250630.htm",
+     "doc_id": "BILL_10K_FY2025",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    },
+    {
+     "chunk_id": "BILL_10K_FY2026#item8#011",
+     "quote": "Acquired card receivables, net | (150,032) | (129,439) | (185,486)",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1786352/000162828026058238/bill-20260630.htm",
+     "doc_id": "BILL_10K_FY2026",
+     "section": "Item 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA"
+    }
+   ],
+   "citations_verified": 3,
+   "retrieved": [
+    "BILL_10K_FY2026#item8#017",
+    "BILL_10K_FY2025#item8#009",
+    "BILL_10K_FY2026#item8#060",
+    "BILL_10K_FY2026#item8#030",
+    "BILL_10K_FY2026#item8#050",
+    "BILL_10K_FY2026#item7#027",
+    "BILL_10K_FY2026#item8#012",
+    "BILL_10K_FY2026#item7#018",
+    "BILL_10K_FY2026#item7#005",
+    "BILL_10K_FY2025#item7#028",
+    "BILL_10K_FY2025#item8#025",
+    "BILL_10K_FY2026#item8#025",
+    "BILL_10K_FY2025#item8#024",
+    "BILL_10K_FY2026#item8#024",
+    "BILL_10K_FY2026#item8#045",
+    "BILL_10K_FY2026#cover#002",
+    "BILL_10K_FY2026#item8#059",
+    "BILL_10K_FY2026#item7#002",
+    "BILL_10K_FY2026#item8#064",
+    "BILL_10K_FY2026#item8#011",
+    "BILL_10K_FY2025#item8#011",
+    "BILL_10K_FY2025#item7#027",
+    "BILL_10K_FY2026#item8#044",
+    "BILL_10K_FY2026#item8#033"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 17.8,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 6,
+    "tool_calls": 7,
+    "tokens": 96869,
+    "usd": 0.092258,
+    "stop": "step_limit",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "acquisition purchase consideration business combination",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ],
+       "topics": "financials"
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#017",
+       "BILL_10K_FY2025#item8#009",
+       "BILL_10K_FY2026#item8#060",
+       "BILL_10K_FY2026#item8#030",
+       "BILL_10K_FY2026#item8#050"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#017",
+       "BILL_10K_FY2025#item8#009",
+       "BILL_10K_FY2026#item8#060",
+       "BILL_10K_FY2026#item8#030",
+       "BILL_10K_FY2026#item8#050"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "acquired during fiscal year total purchase consideration cash",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item7#027",
+       "BILL_10K_FY2026#item8#012",
+       "BILL_10K_FY2026#item7#018",
+       "BILL_10K_FY2026#item7#005",
+       "BILL_10K_FY2025#item7#028"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#027",
+       "BILL_10K_FY2026#item8#012",
+       "BILL_10K_FY2026#item7#018",
+       "BILL_10K_FY2026#item7#005",
+       "BILL_10K_FY2025#item7#028"
+      ],
+      "error": false
+     },
+     {
+      "turn": 3,
+      "tool": "search_filings",
+      "input": {
+       "query": "Business Combinations Note acquisition date fair value goodwill intangible assets acquired",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026",
+        "FY2025"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2025#item8#025",
+       "BILL_10K_FY2026#item8#025",
+       "BILL_10K_FY2025#item8#024",
+       "BILL_10K_FY2026#item8#024",
+       "BILL_10K_FY2026#item8#045"
+      ],
+      "refs": [
+       "BILL_10K_FY2025#item8#025",
+       "BILL_10K_FY2026#item8#025",
+       "BILL_10K_FY2025#item8#024",
+       "BILL_10K_FY2026#item8#024",
+       "BILL_10K_FY2026#item8#045"
+      ],
+      "error": false
+     },
+     {
+      "turn": 3,
+      "tool": "search_filings",
+      "input": {
+       "query": "In fiscal 2026 the Company completed the acquisition of",
+       "forms": [
+        "10-K"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#cover#002",
+       "BILL_10K_FY2026#item8#059",
+       "BILL_10K_FY2026#item7#002",
+       "BILL_10K_FY2026#item8#064"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#cover#002",
+       "BILL_10K_FY2026#item8#059",
+       "BILL_10K_FY2026#item7#002",
+       "BILL_10K_FY2026#item8#064",
+       "BILL_10K_FY2026#item8#060"
+      ],
+      "error": false
+     },
+     {
+      "turn": 4,
+      "tool": "search_filings",
+      "input": {
+       "query": "cash paid for acquisitions net of cash acquired investing activities",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#011",
+       "BILL_10K_FY2025#item8#011",
+       "BILL_10K_FY2025#item7#027"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item7#027",
+       "BILL_10K_FY2026#item8#011",
+       "BILL_10K_FY2025#item8#011",
+       "BILL_10K_FY2025#item7#027",
+       "BILL_10K_FY2025#item7#028"
+      ],
+      "error": false
+     },
+     {
+      "turn": 5,
+      "tool": "search_filings",
+      "input": {
+       "query": "goodwill balance at beginning of year acquisitions additions",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2026"
+       ]
+      },
+      "shown": [
+       "BILL_10K_FY2026#item8#044",
+       "BILL_10K_FY2026#item8#033"
+      ],
+      "refs": [
+       "BILL_10K_FY2026#item8#044",
+       "BILL_10K_FY2026#item8#025",
+       "BILL_10K_FY2026#item8#045",
+       "BILL_10K_FY2026#item8#024",
+       "BILL_10K_FY2026#item8#033"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "BILL:ma_recent",
+   "grade": "judged",
+   "expected": {
+    "text": "None. BILL did not complete any business acquisitions in FY2025 or FY2026: goodwill was unchanged at $2.4 billion at June 30, 2024, 2025 and 2026, the cash flow statements show no cash paid for acquisitions in either year (the last such outflow, $28.9M, was in FY2023), and acquisition and integration-related expenses were zero. The most recent acquisition cited is Finmark Financial, Inc. (completed November 2022, fiscal 2023). The only related item is a $2.9M purchase of intangible assets in FY2025, which is not a business combination. MUST include: no acquisitions completed in FY2025-FY2026 (an answer that no acquisitions are disclosed for the period is acceptable). WRONG: listing Finmark, Regpack, Invoice2go or Divvy as FY2025/FY2026 acquisitions or inventing consideration amounts. A not_found answer is also acceptable: the filings imply 'none' without stating it."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Matches expected 'none'; goodwill and cash flow quotes back the claims.",
+   "value_in_context": null
+  },
+  {
+   "qid": "rev_streams",
+   "ticker": "RPD",
+   "question": "What are the company's revenue streams, and how much revenue did each contribute in the most recent fiscal year?",
+   "category": "Revenue",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Rapid7's two revenue streams in FY2025 (ended Dec 31, 2025) were: (1) Product subscriptions (cloud-based subscriptions, managed services, term software licenses, content subscriptions, and maintenance/support), which generated $831,325 thousand; and (2) Professional services (deployment/training services, incident response, penetration testing, security advisory), which generated $28,469 thousand. Total revenue was $859,794 thousand.",
+   "value": "859794000",
+   "parsed_value": 859794000.0,
+   "unit": "USD",
+   "period": "FY2025 (ended 2025-12-31)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#005",
+     "quote": "Product subscriptions | $831,325 | $808,906 | $740,168",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    },
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#005",
+     "quote": "Professional services | 28,469 | 35,101 | 37,539",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    },
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#005",
+     "quote": "Total revenue | 859,794 | 844,007 | 777,707",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    }
+   ],
+   "citations_verified": 3,
+   "retrieved": [
+    "RPD_10K_FY2025#item8#015",
+    "RPD_10K_FY2025#item8#005",
+    "RPD_10K_FY2025#item8#003",
+    "RPD_10K_FY2025#item8#016",
+    "RPD_10K_FY2025#item8#012"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 7.8,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 17150,
+    "usd": 0.023478,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "list_filings",
+      "input": {},
+      "shown": [],
+      "refs": [],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "revenue disaggregation products subscriptions professional services total revenue",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ],
+       "topics": [
+        "financials"
+       ]
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#015",
+       "RPD_10K_FY2025#item8#005",
+       "RPD_10K_FY2025#item8#003",
+       "RPD_10K_FY2025#item8#016",
+       "RPD_10K_FY2025#item8#012"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#015",
+       "RPD_10K_FY2025#item8#005",
+       "RPD_10K_FY2025#item8#003",
+       "RPD_10K_FY2025#item8#016",
+       "RPD_10K_FY2025#item8#012"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:rev_streams",
+   "grade": "judged",
+   "expected": {
+    "text": "FY2025 (year ended Dec 31, 2025) total revenue was $859.8M ($859,794K), from two reported revenue streams: (1) Product subscriptions $831.3M ($831,325K; ~96.7% of revenue, +2.8% YoY) - cloud-based subscriptions, managed services (e.g., MDR), term software licenses with maintenance/support and content subscriptions; and (2) Professional services $28.5M ($28,469K; ~3.3% of revenue, -18.9% YoY) - deployment and training, incident response, penetration testing and security advisory services. MUST include: both streams (product subscriptions and professional services) with FY2025 amounts of ~$831.3M and ~$28.5M (or equivalent shares ~96.7% / ~3.3%). OPTIONAL: total $859.8M, YoY changes, prior-year figures ($808.9M / $35.1M in FY2024), description of what each stream comprises. The company does not report separate revenue amounts for cloud vs. managed services vs. term licenses."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Figures match expected; quotes back all amounts.",
+   "value_in_context": null
+  },
+  {
+   "qid": "rev_customers",
+   "ticker": "RPD",
+   "question": "How many customers did the company report as of the most recent period disclosed, and how does it define a customer?",
+   "category": "Revenue",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "As of June 30, 2026 (most recent period disclosed, per the 10-Q Q2 FY2026 filed 2026-08-10), Rapid7 reported over 11,500 customers in 149 countries. The company defines a customer as any entity that has an active Rapid7 recurring revenue contract as of the specified measurement date, excluding InsightOps and Logentries only customers with a contract value of less than $2,400 per year.",
+   "value": "11500",
+   "parsed_value": 11500.0,
+   "unit": "count",
+   "period": "Q2 FY2026 (as of June 30, 2026)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10Q_Q2FY2026#partI-item2#005",
+     "quote": "As of June 30, 2026, we had over 11,500 customers in 149 countries, including 34% of the Fortune 100.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000044/rp-20260630.htm",
+     "doc_id": "RPD_10Q_Q2FY2026",
+     "section": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operati"
+    },
+    {
+     "chunk_id": "RPD_8K_Q2FY2026#press_release#007",
+     "quote": "We define a customer as any entity that has an active Rapid7 recurring revenue contract as of the specified measurement date, excluding only InsightOps and Logentries customers with a contract value less than $2,400 per year.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000043/q22026rapid78-kex991.htm",
+     "doc_id": "RPD_8K_Q2FY2026",
+     "section": "press_release"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "RPD_10K_FY2024#item1#001",
+    "RPD_10Q_Q3FY2025#partI-item2#004",
+    "RPD_10K_FY2025#item1#002",
+    "RPD_10Q_Q2FY2025#partI-item2#004",
+    "RPD_10K_FY2025#item1#011",
+    "RPD_10Q_Q2FY2026#partI-item1#040",
+    "RPD_DEF14A_2026#proxy#051",
+    "RPD_8K_Q2FY2026#press_release#007",
+    "RPD_10Q_Q2FY2026#partI-item1#037",
+    "RPD_10Q_Q2FY2026#partI-item2#004",
+    "RPD_10Q_Q2FY2026#partI-item3#002",
+    "RPD_10Q_Q2FY2026#partI-item2#005",
+    "RPD_10Q_Q2FY2026#partI-item1#021",
+    "RPD_10Q_Q2FY2026#partI-item1#023",
+    "RPD_10Q_Q2FY2026#partI-item2#025"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 7.4,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 3,
+    "tokens": 29307,
+    "usd": 0.040335,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "customers as of customer is defined as an organization",
+       "forms": [
+        "10-Q",
+        "10-K"
+       ]
+      },
+      "shown": [
+       "RPD_10K_FY2024#item1#001",
+       "RPD_10Q_Q3FY2025#partI-item2#004",
+       "RPD_10K_FY2025#item1#002",
+       "RPD_10Q_Q2FY2025#partI-item2#004",
+       "RPD_10K_FY2025#item1#011"
+      ],
+      "refs": [
+       "RPD_10K_FY2024#item1#001",
+       "RPD_10Q_Q3FY2025#partI-item2#004",
+       "RPD_10K_FY2025#item1#002",
+       "RPD_10Q_Q2FY2025#partI-item2#004",
+       "RPD_10K_FY2025#item1#011"
+      ],
+      "error": false
+     },
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "number of customers approximately",
+       "periods": [
+        "Q2 FY2026"
+       ]
+      },
+      "shown": [
+       "RPD_10Q_Q2FY2026#partI-item1#040",
+       "RPD_DEF14A_2026#proxy#051",
+       "RPD_8K_Q2FY2026#press_release#007",
+       "RPD_10Q_Q2FY2026#partI-item1#037",
+       "RPD_10Q_Q2FY2026#partI-item2#004"
+      ],
+      "refs": [
+       "RPD_10Q_Q2FY2026#partI-item1#040",
+       "RPD_DEF14A_2026#proxy#051",
+       "RPD_8K_Q2FY2026#press_release#007",
+       "RPD_10Q_Q2FY2026#partI-item1#037",
+       "RPD_10Q_Q2FY2026#partI-item2#004"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "search_filings",
+      "input": {
+       "query": "As of June 30, 2026, we had over customers",
+       "periods": [
+        "Q2 FY2026"
+       ]
+      },
+      "shown": [
+       "RPD_10Q_Q2FY2026#partI-item3#002",
+       "RPD_10Q_Q2FY2026#partI-item2#005",
+       "RPD_10Q_Q2FY2026#partI-item1#021",
+       "RPD_10Q_Q2FY2026#partI-item1#023",
+       "RPD_10Q_Q2FY2026#partI-item2#025"
+      ],
+      "refs": [
+       "RPD_10Q_Q2FY2026#partI-item3#002",
+       "RPD_10Q_Q2FY2026#partI-item2#005",
+       "RPD_10Q_Q2FY2026#partI-item1#021",
+       "RPD_10Q_Q2FY2026#partI-item1#023",
+       "RPD_10Q_Q2FY2026#partI-item2#025"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:rev_customers",
+   "grade": "judged",
+   "expected": {
+    "text": "Rapid7 reported 11,772 customers as of June 30, 2026 (up 1.1% from 11,643 a year earlier; 11,674 at Dec 31, 2025). A customer is defined as any entity that has an active Rapid7 recurring revenue contract as of the specified measurement date, excluding only InsightOps and Logentries customers with a contract value less than $2,400 per year. MUST include: 11,772 customers as of June 30, 2026 and the definition (active recurring revenue contract; excludes InsightOps/Logentries-only customers under $2,400/year). OPTIONAL: YoY change, ARR per customer ($70.0K), the press-release boilerplate 'more than 11,500 customers'.",
+    "value": 11772,
+    "unit": "count",
+    "period": "2026-06-30"
+   },
+   "golden_verified": "claude-draft",
+   "correct": false,
+   "supported": "yes",
+   "judge_reason": "The answer gives the boilerplate 'over 11,500' rather than the required specific count of 11,772 customers, though quotes support its claims.",
+   "value_in_context": null
+  },
+  {
+   "qid": "rev_concentration",
+   "ticker": "RPD",
+   "question": "Did any single customer account for 10% or more of total revenue in the most recent fiscal year?",
+   "category": "Customers",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "No. Rapid7's FY2025 10-K explicitly states that no single customer, including channel partners, accounted for 10% or more of total revenues in 2025, 2024, or 2023, and separately notes no customer represented more than 1% of revenue in 2025.",
+   "value": "no",
+   "parsed_value": null,
+   "unit": "",
+   "period": "FY2025 (ended 2025-12-31)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item8#018",
+     "quote": "No single customer, including channel partners, accounted for 10% or more of our total revenues in 2025, 2024 or 2023 or accounts receivable as of December 31, 2025 or 2024.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 8. Financial Statements and Supplementary Data."
+    },
+    {
+     "chunk_id": "RPD_10K_FY2025#item1#011",
+     "quote": "Our revenue is not concentrated with any individual customer, and no customer represented more than 1% of our revenue in 2025, 2024 or 2023.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 1. Business"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "RPD_10K_FY2025#item8#018",
+    "RPD_10K_FY2025#item1#011",
+    "RPD_10K_FY2024#item8#018",
+    "RPD_10K_FY2025#item8#038",
+    "RPD_10K_FY2024#item1#009"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 4.9,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 1,
+    "tokens": 10470,
+    "usd": 0.016178,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "no customer accounted for more than 10% of total revenue",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ]
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#018",
+       "RPD_10K_FY2025#item1#011",
+       "RPD_10K_FY2024#item8#018",
+       "RPD_10K_FY2025#item8#038",
+       "RPD_10K_FY2024#item1#009"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#018",
+       "RPD_10K_FY2025#item1#011",
+       "RPD_10K_FY2024#item8#018",
+       "RPD_10K_FY2025#item8#038",
+       "RPD_10K_FY2024#item1#009"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:rev_concentration",
+   "grade": "judged",
+   "expected": {
+    "text": "No. No single customer, including channel partners, accounted for 10% or more of total revenue in FY2025 (nor in 2024 or 2023), and none accounted for 10% or more of accounts receivable at Dec 31, 2025 or 2024. MUST include: 'No' for FY2025. OPTIONAL: the statement also covers channel partners and accounts receivable."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Matches expected 'No' and quotes directly support both claims.",
+   "value_in_context": null
+  },
+  {
+   "qid": "comp_competitors",
+   "ticker": "RPD",
+   "question": "Which competitors or categories of competitors does the company name?",
+   "category": "Competition",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "In its FY2025 10-K, Rapid7 does not name specific competitor companies but describes categories of competitors it faces in the SecOps/security market: (1) large companies that incorporate security products into their products, (2) security platform providers, (3) managed detection and response (MDR) service providers, (4) XDR and SIEM vendors, (5) cloud security vendors, (6) exposure management vendors, (7) vulnerability risk management vendors, (8) application security vendors, (9) threat intelligence vendors, and (10) legacy security, systems management, MSSP, and other IT vendors.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "",
+   "period": "FY2025 (10-K filed 2026-02-19)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item1#012",
+     "quote": "We primarily compete with established and emerging security product vendors, including the following:\n\u2022large companies that incorporate security products into their products;\n\u2022security platform providers;\n\u2022managed detection and response service providers;\n\u2022XDR and SIEM vendors;\n\u2022cloud security vendors;\n\u2022exposure management vendors;\n\u2022vulnerability risk management vendors;\n\u2022application security vendors;\n\u2022threat intelligence vendors; and\n\u2022legacy security, systems management, MSSPs, and other IT vendors.",
+     "verified": false,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 1. Business"
+    },
+    {
+     "chunk_id": "RPD_10K_FY2025#item1a#008",
+     "quote": "We primarily compete with large companies that incorporate security products into their products, security platform providers, MDR service providers, XDR and SIEM vendors, cloud security vendors, exposure management vendors, vulnerability risk management vendors, application security vendors, threat intelligence vendors and legacy security, systems management, MSSP, and other IT vendors.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 1A. Risk Factors."
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "RPD_10K_FY2025#item1a#008",
+    "RPD_10K_FY2025#item1a#001",
+    "RPD_10K_FY2025#item1#012",
+    "RPD_10K_FY2024#item1a#012",
+    "RPD_10K_FY2025#item1a#028",
+    "RPD_10K_FY2025#item1#011",
+    "RPD_10K_FY2025#item1#013"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 9.0,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 3,
+    "tool_calls": 2,
+    "tokens": 19043,
+    "usd": 0.02501,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "competitors compete with companies",
+       "forms": [
+        "10-K"
+       ],
+       "periods": [
+        "FY2025"
+       ],
+       "topics": [
+        "business",
+        "risk_factors"
+       ]
+      },
+      "shown": [
+       "RPD_10K_FY2025#item1a#008",
+       "RPD_10K_FY2025#item1a#001",
+       "RPD_10K_FY2025#item1#012",
+       "RPD_10K_FY2024#item1a#012",
+       "RPD_10K_FY2025#item1a#028"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item1a#008",
+       "RPD_10K_FY2025#item1a#001",
+       "RPD_10K_FY2025#item1#012",
+       "RPD_10K_FY2024#item1a#012",
+       "RPD_10K_FY2025#item1a#028"
+      ],
+      "error": false
+     },
+     {
+      "turn": 2,
+      "tool": "get_chunk",
+      "input": {
+       "chunk_id": "RPD_10K_FY2025#item1#012"
+      },
+      "shown": [
+       "RPD_10K_FY2025#item1#011",
+       "RPD_10K_FY2025#item1#013"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item1#011",
+       "RPD_10K_FY2025#item1#012",
+       "RPD_10K_FY2025#item1#013"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:comp_competitors",
+   "grade": "judged",
+   "expected": {
+    "text": "Rapid7 names categories of competitors, not specific companies. It says it primarily competes with established and emerging security product vendors, including: large companies that incorporate security products into their products; security platform providers; managed detection and response (MDR) service providers; XDR and SIEM vendors; cloud security vendors; exposure management vendors; vulnerability risk management vendors; application security vendors; threat intelligence vendors; and legacy security, systems management, MSSPs and other IT vendors. MUST include: that competitors are described by category (no named competitors) and most of these categories (at least MDR providers, XDR/SIEM vendors, vulnerability risk management/exposure management vendors, cloud security vendors, and large companies/platform providers). OPTIONAL: competitive factors (functionality, breadth, cost, etc.). Naming specific companies (e.g., from the proxy's compensation peer group or the 10-K's technology partners like Microsoft/Palo Alto Networks) as named competitors is not supported by the filings."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Answer matches the expected categories and is directly backed by the cited quote.",
+   "value_in_context": null
+  },
+  {
+   "qid": "gov_structure",
+   "ticker": "RPD",
+   "question": "Is the board classified (staggered), and does the company have more than one class of common stock with different voting rights?",
+   "category": "Governance",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "Rapid7's board is not classified/staggered: since the 2023 annual meeting, each director holds office for a one-year term (de-staggered board). The company also has only a single class of common stock with one vote per share \u2014 proxy materials confirm stockholders have 'one vote for each share of common stock,' with no evidence of a dual-class structure.",
+   "value": "",
+   "parsed_value": null,
+   "unit": "",
+   "period": "FY2025/2026 (per RPD 10-K FY2025 filed 2026-02-19 and DEF 14A filed 2026-04-22)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_10K_FY2025#item1a#077",
+     "quote": "establish that subsequent to the 2023 annual meeting, each director will hold office for a term of one year;",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000008/rp-20251231.htm",
+     "doc_id": "RPD_10K_FY2025",
+     "section": "Item 1A. Risk Factors."
+    },
+    {
+     "chunk_id": "RPD_DEF14A_2026#proxy#012",
+     "quote": "On each matter to be voted upon, you have one vote for each share of common stock you own as of April 15, 2026.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000019/rp-20260421.htm",
+     "doc_id": "RPD_DEF14A_2026",
+     "section": "proxy"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "RPD_DEF14A_2026#proxy#038",
+    "RPD_DEF14A_2026#proxy#114",
+    "RPD_10K_FY2024#item8#045",
+    "RPD_10K_FY2025#item8#048",
+    "RPD_DEF14A_2026#proxy#039",
+    "RPD_10K_FY2024#item1a#074",
+    "RPD_10K_FY2025#item1a#077",
+    "RPD_DEF14A_2026#proxy#012",
+    "RPD_10K_FY2024#item1a#061",
+    "RPD_10K_FY2025#item1a#062"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 5.9,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 2,
+    "tokens": 14384,
+    "usd": 0.026204,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "classified board staggered terms directors divided into three classes",
+       "forms": [
+        "DEF 14A",
+        "10-K"
+       ]
+      },
+      "shown": [
+       "RPD_DEF14A_2026#proxy#038",
+       "RPD_DEF14A_2026#proxy#114",
+       "RPD_10K_FY2024#item8#045",
+       "RPD_10K_FY2025#item8#048",
+       "RPD_DEF14A_2026#proxy#039"
+      ],
+      "refs": [
+       "RPD_DEF14A_2026#proxy#038",
+       "RPD_DEF14A_2026#proxy#114",
+       "RPD_10K_FY2024#item8#045",
+       "RPD_10K_FY2025#item8#048",
+       "RPD_DEF14A_2026#proxy#039"
+      ],
+      "error": false
+     },
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "single class of common stock one vote per share"
+      },
+      "shown": [
+       "RPD_10K_FY2024#item1a#074",
+       "RPD_10K_FY2025#item1a#077",
+       "RPD_DEF14A_2026#proxy#012",
+       "RPD_10K_FY2024#item1a#061",
+       "RPD_10K_FY2025#item1a#062"
+      ],
+      "refs": [
+       "RPD_10K_FY2024#item1a#074",
+       "RPD_10K_FY2025#item1a#077",
+       "RPD_DEF14A_2026#proxy#012",
+       "RPD_10K_FY2024#item1a#061",
+       "RPD_10K_FY2025#item1a#062"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:gov_structure",
+   "grade": "judged",
+   "expected": {
+    "text": "No and no. The board is not classified: it has been declassified, and since the 2023 annual meeting each director is elected annually for a one-year term (all 11 nominees stand for election to terms expiring at the 2027 meeting). Rapid7 has a single class of common stock ($0.01 par, listed on Nasdaq as RPD) with one vote per share; there is no dual-class structure. 10,000,000 shares of preferred stock are authorized but none are issued or outstanding. MUST include: not staggered/annual one-year terms (declassified) AND single class of common stock / no multiple voting classes. OPTIONAL: blank-check preferred authorization; other anti-takeover provisions (no written consent, advance notice, Delaware Section 203)."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Both required points (annual one-year terms, single class with one vote per share) match the expected answer and are backed by the quotes.",
+   "value_in_context": null
+  },
+  {
+   "qid": "gov_holders",
+   "ticker": "RPD",
+   "question": "Which holders beneficially own more than 5% of the common stock according to the latest proxy statement?",
+   "category": "Governance",
+   "status": "answered",
+   "model_status": "answered",
+   "answer": "According to RPD's latest proxy statement (DEF 14A for the 2026 annual meeting), two holders beneficially own more than 5% of common stock as of March 31, 2026: Entities affiliated with JANA Partners Management, LP (6,760,149 shares, 10.1%), and Entities affiliated with BlackRock, Inc. (5,913,948 shares, 8.9%).",
+   "value": "2",
+   "parsed_value": 2.0,
+   "unit": "count",
+   "period": "as of March 31, 2026 (per DEF 14A filed 2026-04-22)",
+   "confidence": "high",
+   "citations": [
+    {
+     "chunk_id": "RPD_DEF14A_2026#proxy#046",
+     "quote": "Entities affiliated with JANA Partners Management, LP (1) | 6,760,149 | 10.1%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000019/rp-20260421.htm",
+     "doc_id": "RPD_DEF14A_2026",
+     "section": "proxy"
+    },
+    {
+     "chunk_id": "RPD_DEF14A_2026#proxy#046",
+     "quote": "Entities affiliated with BlackRock Inc. (2) | 5,913,948 | 8.9%",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000019/rp-20260421.htm",
+     "doc_id": "RPD_DEF14A_2026",
+     "section": "proxy"
+    }
+   ],
+   "citations_verified": 2,
+   "retrieved": [
+    "RPD_DEF14A_2026#proxy#045",
+    "RPD_DEF14A_2026#proxy#047",
+    "RPD_DEF14A_2026#proxy#046",
+    "RPD_DEF14A_2026#proxy#044",
+    "RPD_DEF14A_2026#proxy#048"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 6.0,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 1,
+    "tokens": 10787,
+    "usd": 0.017166,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "beneficial ownership 5% holders common stock",
+       "forms": [
+        "DEF 14A"
+       ],
+       "topics": [
+        "ownership"
+       ]
+      },
+      "shown": [
+       "RPD_DEF14A_2026#proxy#045",
+       "RPD_DEF14A_2026#proxy#047",
+       "RPD_DEF14A_2026#proxy#046",
+       "RPD_DEF14A_2026#proxy#044",
+       "RPD_DEF14A_2026#proxy#048"
+      ],
+      "refs": [
+       "RPD_DEF14A_2026#proxy#045",
+       "RPD_DEF14A_2026#proxy#047",
+       "RPD_DEF14A_2026#proxy#046",
+       "RPD_DEF14A_2026#proxy#044",
+       "RPD_DEF14A_2026#proxy#048"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:gov_holders",
+   "grade": "judged",
+   "expected": {
+    "text": "Per the 2026 proxy (ownership as of March 31, 2026, 66,770,824 shares outstanding), two holders owned more than 5%: entities affiliated with JANA Partners Management, LP - 6,760,149 shares (10.1%); and entities affiliated with BlackRock, Inc. - 5,913,948 shares (8.9%). MUST include: JANA (~10.1%) and BlackRock (~8.9%) and no others. OPTIONAL: share counts; source filings (JANA 13D/A of March 30, 2026; BlackRock 13G/A of October 17, 2025)."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": "yes",
+   "judge_reason": "Matches expected holders and figures; quotes back both entries.",
+   "value_in_context": null
+  },
+  {
+   "qid": "na_projections",
+   "ticker": "RPD",
+   "question": "What are management's internal revenue projections for each of the next five fiscal years?",
+   "category": "Abstention",
+   "status": "not_found",
+   "model_status": "not_found",
+   "answer": "No five-year internal revenue projections were found in Rapid7's SEC filings. The filings searched (10-K FY2025, 10-Q Q1/Q2/Q3 FY2025, 10-Q Q1/Q2 FY2026) discuss liquidity, cloud-services commitments, ARR, and non-GAAP metrics, but none disclose multi-year internal revenue forecasts; filings explicitly note that ARR 'is not a forecast of future revenue.'",
+   "value": "",
+   "parsed_value": null,
+   "unit": "",
+   "period": "",
+   "confidence": "low",
+   "citations": [
+    {
+     "chunk_id": "RPD_10Q_Q2FY2026#partI-item2#019",
+     "quote": "ARR is not a forecast of future revenue, which can be impacted by contract start and end dates and renewal rates and does not include revenue reported as professional services revenue in our consolidated statement of operations.",
+     "verified": true,
+     "url": "https://www.sec.gov/Archives/edgar/data/1560327/000156032726000044/rp-20260630.htm",
+     "doc_id": "RPD_10Q_Q2FY2026",
+     "section": "Item 2. Management\u2019s Discussion and Analysis of Financial Condition and Results of Operati"
+    }
+   ],
+   "citations_verified": 1,
+   "retrieved": [
+    "RPD_10K_FY2025#item7#021",
+    "RPD_10Q_Q3FY2025#partI-item2#027",
+    "RPD_10Q_Q2FY2025#partI-item2#028",
+    "RPD_10Q_Q2FY2026#partI-item2#026",
+    "RPD_10Q_Q1FY2026#partI-item2#021",
+    "RPD_10K_FY2025#item8#002",
+    "RPD_10K_FY2024#item8#002",
+    "RPD_10Q_Q2FY2026#partI-item2#019",
+    "RPD_10Q_Q2FY2025#partI-item2#020",
+    "RPD_10Q_Q3FY2025#partI-item2#018"
+   ],
+   "model": "claude-sonnet-5",
+   "effort": "medium",
+   "k": null,
+   "expand": null,
+   "seconds": 5.8,
+   "error": null,
+   "mode": "agent",
+   "agent": {
+    "model_calls": 2,
+    "tool_calls": 2,
+    "tokens": 14760,
+    "usd": 0.027029,
+    "stop": "model_done",
+    "repairs": 0,
+    "cited_unseen": [],
+    "trace": [
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "revenue projections next five fiscal years management"
+      },
+      "shown": [
+       "RPD_10K_FY2025#item7#021",
+       "RPD_10Q_Q3FY2025#partI-item2#027",
+       "RPD_10Q_Q2FY2025#partI-item2#028",
+       "RPD_10Q_Q2FY2026#partI-item2#026",
+       "RPD_10Q_Q1FY2026#partI-item2#021"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item7#021",
+       "RPD_10Q_Q3FY2025#partI-item2#027",
+       "RPD_10Q_Q2FY2025#partI-item2#028",
+       "RPD_10Q_Q2FY2026#partI-item2#026",
+       "RPD_10Q_Q1FY2026#partI-item2#021"
+      ],
+      "error": false
+     },
+     {
+      "turn": 1,
+      "tool": "search_filings",
+      "input": {
+       "query": "internal financial forecasts projections revenue"
+      },
+      "shown": [
+       "RPD_10K_FY2025#item8#002",
+       "RPD_10K_FY2024#item8#002",
+       "RPD_10Q_Q2FY2026#partI-item2#019",
+       "RPD_10Q_Q2FY2025#partI-item2#020",
+       "RPD_10Q_Q3FY2025#partI-item2#018"
+      ],
+      "refs": [
+       "RPD_10K_FY2025#item8#002",
+       "RPD_10K_FY2024#item8#002",
+       "RPD_10Q_Q2FY2026#partI-item2#019",
+       "RPD_10Q_Q2FY2025#partI-item2#020",
+       "RPD_10Q_Q3FY2025#partI-item2#018"
+      ],
+      "error": false
+     }
+    ]
+   },
+   "id": "RPD:na_projections",
+   "grade": "abstain",
+   "expected": {
+    "not_found": true,
+    "text": "The filings do not disclose management's internal revenue projections for the next five fiscal years. The only forward-looking revenue figures are public guidance in the Q2 FY2026 earnings release: Q3 2026 revenue of $208-$210M and full-year 2026 revenue of $837-$841M (plus ARR ~$812M for Q3 2026, non-GAAP operating income and ~$130M FY2026 free cash flow). No multi-year or five-year projections appear in the 10-Ks, 10-Qs, 8-K or proxy (the proxy notes 2025 bonus targets were set above the internal plan but does not disclose the plan)."
+   },
+   "golden_verified": "claude-draft",
+   "correct": true,
+   "supported": null,
+   "judge_reason": "",
+   "value_in_context": null
+  }
+ ],
+ "mode": "agent",
+ "agent_opts": {
+  "max_model_calls": 6,
+  "max_tool_calls": 8,
+  "max_tokens": 100000,
+  "repair": false
+ },
+ "only": [
+  "BILL:bs_cash",
+  "BILL:cf_capex",
+  "BILL:cf_fcf",
+  "BILL:comp_bonus_metrics",
+  "BILL:debt_instruments",
+  "BILL:emp_count",
+  "BILL:gov_holders",
+  "BILL:ma_recent",
+  "BILL:na_gross_retention",
+  "BILL:rev_total",
+  "RPD:cf_capex",
+  "RPD:comp_competitors",
+  "RPD:gov_holders",
+  "RPD:gov_structure",
+  "RPD:na_projections",
+  "RPD:net_income",
+  "RPD:rev_concentration",
+  "RPD:rev_customers",
+  "RPD:rev_rpo",
+  "RPD:rev_streams"
+ ]
+}

@@ -1,5 +1,7 @@
 """Agent-mode evals go to results/agent/ with their own changelog; compare() pairs two results files. Free."""
 
+import contextlib
+import io
 import json
 import tempfile
 import unittest
@@ -47,9 +49,10 @@ class AgentEvalTest(unittest.TestCase):
         self.corpus.__exit__(None, None, None)
 
     def test_agent_eval_writes_only_to_the_agent_area(self):
-        r = evaluate.run(["ACME"], "claude-sonnet-5", "medium", 8, 2, use_judge=False, label="t", workers=2,
-                         only={"ACME:rev_total", "ACME:na_cac"}, mode="agent",
-                         agent_opts={"max_model_calls": 4, "call_model": FakeModel(then=script)})
+        with contextlib.redirect_stdout(io.StringIO()):
+            r = evaluate.run(["ACME"], "claude-sonnet-5", "medium", 8, 2, use_judge=False, label="t", workers=2,
+                             only={"ACME:rev_total", "ACME:na_cac"}, mode="agent",
+                             agent_opts={"max_model_calls": 4, "call_model": FakeModel(then=script)})
         self.assertEqual([p.name for p in self.agent_dir.glob("*.json")], [f"{r['name']}.json"])
         self.assertEqual(list(self.results.glob("*.json")), [])
         self.assertFalse(self.cl.exists())
@@ -66,7 +69,8 @@ class AgentEvalTest(unittest.TestCase):
 
     def test_pipeline_eval_is_unchanged(self):
         out = draft(cites=[REAL], value="1,234,500,000")
-        with mock.patch.object(llm, "complete_json", lambda *a, **k: json.loads(json.dumps(out))):
+        with mock.patch.object(llm, "complete_json", lambda *a, **k: json.loads(json.dumps(out))), \
+                contextlib.redirect_stdout(io.StringIO()):
             r = evaluate.run(["ACME"], "claude-sonnet-5", "medium", 8, 2, use_judge=False, label="p", workers=2)
         self.assertEqual(set(r) - {"name"}, {"timestamp", "label", "note", "tickers", "model", "effort", "k", "expand",
                                               "judge_model", "metrics", "usage", "rows"})
@@ -79,7 +83,8 @@ class AgentEvalTest(unittest.TestCase):
 
 def row(i, correct, grade="numeric", status="answered", agent=None, seconds=4.0):
     r = {"id": i, "ticker": "ACME", "grade": grade, "correct": correct, "status": status, "model_status": status,
-         "citations_verified": 1 if status == "answered" else 0, "citations": [], "supported": "yes",
+         "citations_verified": 1 if status == "answered" else 0, "citations": [],
+         "supported": ("partial" if i == "b" and agent else "yes") if status == "answered" else None,
          "value_in_context": None, "seconds": seconds, "confidence": "high"}
     if agent:
         r["mode"], r["agent"] = "agent", agent
@@ -127,6 +132,9 @@ class CompareTest(unittest.TestCase):
         self.assertIn("Right only in other: b", md)
         self.assertIn("Right only in base: c", md)
         self.assertIn("| Questions that hit a limit | 0 | 1 |", md)
+        self.assertEqual((b["support"]["k"], b["support"]["n"], o["support"]["k"], o["support"]["n"]), (3, 3, 2, 3))  # d is not_found: not answered
+        self.assertEqual((b["partial"], o["partial"]), ([], ["b"]))
+        self.assertIn("Only partly supported by their quotes (other): b", md)
 
     def test_percentile_and_latency(self):
         self.assertEqual(evaluate._pctile(list(range(1, 11)), 0.9), 9)
