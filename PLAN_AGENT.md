@@ -1,16 +1,16 @@
-# PLAN_AGENT.md — an agent mode alongside the pipeline
+# Agent mode alongside the pipeline: design and findings
 
-Status: built on branch `agent-mode` (increments 1 to 7 and 9; increment 8's paid run skipped; one held-out BOX run; see §14). Written 2026-11-21 after reading the engine, the eval harness, the CLI and the current LangGraph docs; §14 records what each step found.
+This is the design of agent mode, the reasons for each decision, and what building and measuring it found. It was written on 2026-11-21 as a plan, after reading the engine, the eval harness, the CLI and the current LangGraph docs. The plan was then carried out: increments 1 to 7 and 9 were built, increment 8's paid run was skipped, agent mode had one held-out run on BOX, and a hybrid mode was built and simulated. Sections 1 to 13 are the design, with changes made during the build noted where they apply; §14 records what each step found.
 
 ## 1. The short version
 
-Add a second way to answer a question. Today code picks the excerpts and the model answers once. In agent mode the model gets three read-only tools (search, read a chunk, list filings), calls them in a loop until it decides it has enough, then returns the same answer JSON as today. That JSON goes through the **same** quote verifier, so the trust rule does not move: no verified quote, no answer.
+A second way to answer a question. In the pipeline, code picks the excerpts and the model answers once. In agent mode the model gets three read-only tools (search, read a chunk, list filings), calls them in a loop until it decides it has enough, then returns the same answer JSON as the pipeline. That JSON goes through the **same** quote verifier, so the trust rule does not move: no verified quote, no answer.
 
 Everything after the answer row (presentation, memo, claim check, grading) is untouched, because the row has the same shape.
 
 **Framework: LangGraph 1.2.24, using only its graph runtime, with the model called through the Anthropic SDK this project already uses.** Reasons and the alternatives are in section 2.
 
-What this is, said plainly for an interview: *a ReAct-style tool loop expressed as a small state machine, with a deterministic verifier as the last node and hard budgets enforced by the graph's routing, measured against a non-agentic baseline on the same answer key.*
+In one sentence: *a ReAct-style tool loop expressed as a small state machine, with a deterministic verifier as the last node and hard budgets enforced by the graph's routing, measured against a non-agentic baseline on the same answer key.*
 
 ## 2. Framework choice
 
@@ -20,38 +20,40 @@ What this is, said plainly for an interview: *a ReAct-style tool loop expressed 
 |---|---|---|---|---|
 | Current version | 1.2.24 (released 2026-11-20) | 2.71.0 | already installed (1.8.0) | 0.2.187 |
 | New packages installed | about 25 (20 today, 45 after) | about 4 | 0 | not resolved |
-| Who writes the loop | you, as nodes and edges | built in | you (about 60 lines) or the SDK's beta tool runner | built in |
-| Step and token limits | you route on counters in state; `recursion_limit` is a backstop | built-in `UsageLimits` | you write them | not checked |
-| Explicit graph you can draw and explain | yes | no (internal) | no | no |
+| Who writes the loop | project code, as nodes and edges | built in | project code (about 60 lines) or the SDK's beta tool runner | built in |
+| Step and token limits | project code routes on counters in state; `recursion_limit` is a backstop | built-in `UsageLimits` | written in project code | not checked |
+| Control flow as an explicit graph that can be drawn and inspected | yes | no (internal) | no | no |
 | Multi-agent later | subgraphs, `Send`, `Command` | agents calling agents | hand-written | subagents |
 
-### Recommendation: stay with LangGraph
+### Why LangGraph
 
-- **It fits the stated goal.** You want a framework implementation you can talk about, and LangGraph's own docs define the workflow-versus-agent distinction this project now straddles. The graph is explicit, so the design in section 3 is the thing you draw on a whiteboard.
+- **The control flow is explicit.** The graph is defined in the project's code as nodes and edges, so the control flow, the budgets and the stop conditions in section 3 are visible and can each be tested.
+- **Its docs draw the line this project straddles.** LangGraph's own docs define the workflow-versus-agent distinction, and this project now has one of each: the pipeline is the workflow, agent mode the agent.
+- **It is a widely used framework**, so the comparison against the hand-built pipeline is informative.
 - **It does not force LangChain on the engine.** The docs say LangGraph does not require LangChain and that nodes are plain functions. So the model node can call `filingroom/llm.py`, which keeps the cost meter, the spend caps and the refusal handling in one place.
 - **Phase 2 has a natural home.** Planner, researcher and verifier become nodes or subgraphs of the same graph.
 
 ### Is another framework clearly better? No, but two honest caveats
 
-- **Pydantic AI would be less code and far fewer packages.** Its built-in loop, `UsageLimits` and output validators map almost one-to-one onto "tool loop, budgets, verify the quotes". If the goal were only the smallest correct agent, I would pick it. It loses on your stated criterion (job-posting recognition) and on having a graph you define yourself. It would also need `anthropic>=1.15`, a bump from the locked 1.8.0.
-- **No framework at all is the smallest change.** The Anthropic SDK can run this loop with zero new dependencies. That is the best fit for a three-dependency project, and worth saying in an interview: *the framework is here because I wanted to learn and show it, not because the problem needs it.* We use none of LangGraph's headline features (persistence, human-in-the-loop, streaming).
+- **Pydantic AI would be less code and far fewer packages.** Its built-in loop, `UsageLimits` and output validators map almost one-to-one onto "tool loop, budgets, verify the quotes". If the goal were only the smallest correct agent, I would pick it. It loses on how widely it is used and on having a graph defined in the project's own code: its loop is internal. It would also need `anthropic>=1.15`, a bump from the locked 1.8.0.
+- **No framework at all is the smallest change.** The Anthropic SDK can run this loop with zero new dependencies. That is the best fit for a three-dependency project. The problem does not need a framework: LangGraph is here to make the loop an explicit, testable state machine, not because the loop requires one. We use none of LangGraph's headline features (persistence, human-in-the-loop, streaming).
 - **Claude Agent SDK is a poor fit.** It is the Claude Code harness as a library, built around file and shell tools. We want three narrow tools and tight control of every model call.
 
 ### What the dependency costs
 
 - **About 25 new packages**, including `langchain-core`, `langsmith`, `pydantic` (already present), `requests`, and the older `httpx` alongside the `httpx2` the Anthropic SDK uses.
-- **`langsmith` is a tracing client for a hosted service.** The docs say tracing is enabled by setting `LANGSMITH_TRACING=true` plus an API key; they do not state the default in so many words. Because this project is "local and private", increment 3 reads the installed source to confirm, sets `LANGSMITH_TRACING=false` explicitly in code, and adds a test that an agent run opens no connection other than to the Anthropic API.
-- **Fast release cadence.** Four releases in nine days. Pin the exact version; keep every `langgraph` import in one file.
-- **The Anthropic SDK must not move.** An unconstrained resolve picks `anthropic` 2.12.0. The lock stays at 1.8.0 so the pipeline's SDK is unchanged; I will check the `uv.lock` diff.
+- **`langsmith` is a tracing client for a hosted service.** The docs say tracing is enabled by setting `LANGSMITH_TRACING=true` plus an API key; they do not state the default in so many words. Because this project is "local and private", increment 3 read the installed source to confirm, set `LANGSMITH_TRACING` and the other tracing variables to `false` explicitly in code, and added a test that an agent run opens no connection other than to the Anthropic API (details in §14).
+- **Fast release cadence.** Four releases in nine days. The exact version is pinned, and every `langgraph` import is in one file.
+- **The Anthropic SDK must not move.** An unconstrained resolve picks `anthropic` 2.12.0. The lock stays at 1.8.0 so the pipeline's SDK is unchanged; the `uv.lock` diff was checked and is additions only (§14).
 
-### One decision for you: `langchain-anthropic`
+### Not added: `langchain-anthropic`
 
-The LangGraph quickstart calls Claude through LangChain (`init_chat_model(...).bind_tools(...)`), which needs two more direct dependencies (`langchain`, `langchain-anthropic`). I recommend **not** adding them:
+The LangGraph quickstart calls Claude through LangChain (`init_chat_model(...).bind_tools(...)`), which needs two more direct dependencies (`langchain`, `langchain-anthropic`). They were **not** added, and Claude is called through `llm.py` instead:
 
 - The model call would bypass `llm.py`, so cost metering and the spend caps would need a second implementation.
 - The project's structured-output and effort settings go through `output_config`, which I have verified on the Anthropic SDK but not on the LangChain wrapper.
 
-The cost of my recommendation: the code looks less like the tutorials. The node functions are the same shape, though, and the quickstart also hand-writes its tool node.
+The cost of this choice: the code looks less like the tutorials. The node functions are the same shape, though, and the quickstart also hand-writes its tool node.
 
 ## 3. Graph design
 
@@ -93,14 +95,14 @@ Things that are not data about the run (the ticker, the loaded `Index`, the `Cos
 |---|---|---|
 | `agent` | model call | Sends system prompt, tools and messages. Either the model asks for tools, or it stops and its text is the answer JSON. |
 | `tools` | plain code | Runs every requested tool, returns all results in one message, records `seen`. A bad argument comes back as an error result the model can read, not an exception. |
-| `finalize` | model call | Used only when a budget ran out. Makes one call with tools switched off (`tool_choice: none`) so the model must answer from what it has seen or return `not_found`. Two entries: from `agent` when the turn's tool requests would pass the tool-call cap or the token budget is already spent (the requests get "limit reached" results); from `tools` after the last allowed tool round (the step limit), whose real results end with a note to answer now. *(Changed at checkpoint B: originally the step limit refused the second-to-last call's requests too, wasting that call.)* |
+| `finalize` | model call | Used only when a budget ran out. Makes one call with tools switched off (`tool_choice: none`) so the model must answer from what it has seen or return `not_found`. Two entries: from `agent` when the turn's tool requests would pass the tool-call cap or the token budget is already spent (the requests get "limit reached" results); from `tools` after the last allowed tool round (the step limit), whose real results end with a note to answer now. *(Changed in increment 3: originally the step limit refused the second-to-last call's requests too, wasting that call.)* |
 | `verify` | plain code | Runs the shared row builder: string-verifies each quote against the chunk it names, sets `unsupported` when none verify. No model involved. |
 
 ### Stop conditions, in the order they bite
 
 1. **The model decides it is done.** It stops calling tools and returns the answer. This is the "genuinely agentic" part: nothing in code tells it how many searches to run.
 2. **Step limit.** Default 6 model calls (the forced final answer included) and 8 tool calls per question. The tool-call cap is checked by the edge out of `agent`; the model-call limit by the edge out of `tools`, so the last tool round still runs and the final call answers from it.
-3. **Token limit.** Default 100,000 tokens per question (30,000 at first; raised after increment 4's spike, see §14). The final answer call is always allowed, so the true ceiling is that plus one call; I will report the measured maximum. For scale, the pipeline uses about 10,100 input tokens per question today.
+3. **Token limit.** Default 100,000 tokens per question (30,000 at first; raised after increment 4's spike, see §14). The final answer call is always allowed, so the true ceiling is that plus one call; the measured maximum was 80,494 on the 80 tuning items and 81,237 on BOX (§14). For scale, the pipeline uses about 10,100 input tokens per question today.
 4. **Existing spend caps.** Every call goes through `llm.py`, so `CostMeter.limit` and `FILINGROOM_MAX_USD` still stop the whole command.
 5. **`recursion_limit` backstop.** Set to a little over twice the model-call limit. If a routing bug ever loops, LangGraph raises `GraphRecursionError`; it is caught and the row becomes `status: error`.
 6. **Request timeout** on the SDK client. LangGraph's own node timeouts apply only to async nodes, and this code is sync.
@@ -111,13 +113,13 @@ Why counters in state and not just `recursion_limit`: the docs do not say what h
 
 Each model call sends both `tools` and `output_config.format` set to the existing `ANSWER_SCHEMA`. The Anthropic docs show the two used together. When the model stops calling tools, its text is schema-valid JSON, exactly like the pipeline's.
 
-To confirm in the first paid spike (about one cent): how the format constraint behaves on turns where the model calls a tool. Fallback if it misbehaves: a fourth tool, `submit_answer`, with `strict: true` and the same schema.
+How the format constraint behaves on turns where the model calls a tool was left to the first paid spike (planned at about one cent), with a fallback if it misbehaved: a fourth tool, `submit_answer`, with `strict: true` and the same schema. The spike in increment 4 found it behaves cleanly, and the fallback was not needed (§14).
 
 ### The repair edge
 
 If `verify` finds an answered draft with zero verified quotes, the model gets one message naming the quotes that failed and the chunks they were claimed from, and one more turn inside the same budgets. The row is still built by the same verifier afterwards, so this can only turn `unsupported` into `answered` by producing a quote that really is in the filing.
 
-It is its own increment behind a switch, off at first, so its effect is measured, not assumed.
+It is its own increment behind a switch, off at first, so that its effect would be measured, not assumed. Its trigger never occurred in the measured runs, so it is still off and its effect is unmeasured (§14, increment 8).
 
 ## 4. Tools
 
@@ -219,14 +221,14 @@ Pipeline rows get no new keys, so their output is identical to today's.
 | Latency: mean, median, 90th percentile | `seconds` on each row |
 | Model calls and tool calls per question; share of questions that hit a limit | `agent` block (pipeline is 1 and 0 by definition) |
 
-The pipeline side can be the recorded run `results/2026-09-27_1616_recency.json` (93.6% on 80 items, $1.91 answering, 4.5 s mean per question), which costs nothing. Its latency was measured on a different day, so the final comparison should run both modes in one session.
+The pipeline side is the recorded run `results/2026-09-27_1616_recency.json` (93.6% on 80 items, $1.91 answering, 4.5 s mean per question), which costs nothing. Its latency was measured on a different day, so a fair latency comparison would run both modes in one session; the comparison in §14 did not, and its caveats say so.
 
-### Two things to say out loud about the comparison
+### Two limits of the comparison
 
 - **80 paired items cannot detect a small accuracy difference.** If agent mode lands within a few points, the honest finding is "no detectable difference in accuracy; here is what it cost". Cost, latency and tool calls will be unambiguous.
 - **An agent run is one sample.** The model's path varies between runs. The intervals are there for that reason.
 
-BOX stays untouched during development. It was the pipeline's held-out company and is still unseen by agent mode, so one `--final` agent run at the very end would be a real held-out number.
+BOX stayed untouched during development. It was the pipeline's held-out company and unseen by agent mode, so one `--final` agent run at the very end gave a real held-out number; that run is in §14.
 
 ## 8. Tests
 
@@ -254,7 +256,7 @@ Stdlib `unittest`, like the existing suite; no pytest. The graph is tested with 
 
 ## 10. Increments
 
-Each ends with the full test suite passing and is small enough to review in one sitting. Paid steps are marked and each needs your go-ahead.
+Each ends with the full test suite passing and is small enough to review in one sitting. Paid steps are marked; each needed its cost confirmed before it ran.
 
 1. **Guard the pipeline.** Characterisation test for `answer_question`, then extract `build_row`. No behaviour change. Free.
 2. **Tools.** `agent/tools.py` and its tests. No framework yet. Free.
@@ -262,13 +264,13 @@ Each ends with the full test suite passing and is small enough to review in one 
 4. **Real model.** `llm.complete_tools`, `prompts/agent.md`, `./fr ask --mode agent`. Try three questions (a number, a list, one that should be not found). **Paid, about $0.20.**
 5. **Whole checklist and spot checks.** `--mode` on `run` and `eval --only`; trace in the row. Spot-check five golden items. **Paid, about $0.40.**
 6. **Comparison tooling.** `eval --mode agent` to `results/agent/`, `./fr compare`, tests. Free (compare runs against recorded files).
-7. **Measure.** A 20-item stratified subset first. **Paid, about $1.50.** Then decide together whether a full 80-item run is worth it (**estimated $4 to $6**, above the $3 per-command cap, so it needs an explicit raise).
+7. **Measure.** A 20-item stratified subset first. **Paid, about $1.50.** Then a separate decision on whether a full 80-item run is worth it (**estimated $4 to $6**, above the $3 per-command cap, so it needs an explicit raise). It was run; see §14.
 8. **Repair edge.** Turn it on, rerun the subset, keep or drop on the numbers. **Paid, about $1.50.**
 9. **Write it up.** README section with the comparison table; update CLAUDE.md (architecture, the dependency line, the eval notes) and the `pyproject.toml` description.
 
-Later, each its own plan: agent mode in the app; the held-out BOX run; phase 2.
+Later, each its own plan: agent mode in the app; the held-out BOX run (since made, §14); phase 2.
 
-## 11. Cost estimate (to be replaced by measurements)
+## 11. Cost estimate (made before the build; measured costs are in §14)
 
 - **Pipeline today:** $0.024 and about 10,100 input tokens per question (from the recorded 80-item run).
 - **Agent, typical guess:** two searches and one chunk read, four model calls, roughly $0.04 to $0.07 per question, so 1.5 to 3 times the pipeline. Prompt caching should pull this toward the low end; whether the prefix is long enough to cache on this model is checked in increment 4.
@@ -285,13 +287,15 @@ The single loop splits along lines the graph already has:
 
 Hand-off is through state: plan in, evidence out, verdict out. A further step is one orchestrator across the whole checklist, so a passage found for one question is available to the next; today the 40 questions are independent.
 
-## 13. Decisions I need from you
+## 13. Decisions
 
-1. **Framework:** LangGraph 1.2.24, pinned, with about 25 transitive packages. Approve, or prefer Pydantic AI or no framework?
-2. **Model access:** call Claude through the existing `llm.py` (my recommendation), or add `langchain` and `langchain-anthropic` to match the tutorials?
-3. **Model:** keep `claude-sonnet-5` at medium effort, the same as the pipeline, so the comparison isolates "who chooses the excerpts". A newer model would be a separate experiment.
-4. **Hints:** withhold the checklist's `where` and `search` hints from the agent (my recommendation), or give them?
-5. **Spend:** about $2.10 across increments 4 to 7 for a first comparison, each step confirmed before it runs.
+1. **Framework:** LangGraph 1.2.24, pinned, over Pydantic AI or no framework (reasons in section 2). It was expected to bring about 25 transitive packages; it added 26 (§14).
+2. **Model access:** Claude is called through the project's own `llm.py` (`llm.complete_tools`), not through `langchain` and `langchain-anthropic` as in the tutorials, so the cost meter, the spend caps and the refusal handling stay in one place (section 2).
+3. **Model:** `claude-sonnet-5` at medium effort, the same as the pipeline, so the comparison isolates "who chooses the excerpts". A newer model would be a separate experiment.
+4. **Hints:** the checklist's `where` and `search` hints are withheld from the agent. Withholding them is the experiment, and it matches the app's free-text questions, which have no hints (section 4).
+5. **Spend:** about $2.10 across increments 4 to 7 for a first comparison, each step confirmed before it ran. The measured spend is in §14: $0.113 for increment 4, $0.177 for increment 5, and $3.70 for increment 7, which added the full 80-item run ($2.92) to the subset ($0.78).
+
+Later decisions are recorded in §14 where they were made: the token budget raised from 30,000 to 100,000 after increment 4, the full 80-item run with the per-command cap raised to $4 for that one command, increment 8's paid run skipped, and the single held-out run on BOX.
 
 ## 14. What is verified and what is not
 
@@ -326,7 +330,7 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 - **The format constraint and tools together behave cleanly.** On every tool-calling turn the response held only `thinking` and `tool_use` blocks, with no text at all. Every final turn was a single `text` block of schema-valid JSON. `_parse_draft` joining text blocks is therefore safe, and the `submit_answer` fallback is not needed.
 - **Prompt caching engages, within a question and across questions.** The tools-plus-system prefix is 2,778 tokens (more than my 1,500 estimate: the API adds its own tool-use preamble), above the 1,024 minimum. Within a question each call read the previous call's whole prompt from cache. The first call of each later question read exactly the 2,778-token prefix and wrote only the new question (225 to 283 tokens). The second process, started within five minutes of the first, also found the prefix warm.
 - **Conversation caching pays even on three-call questions.** Cost with only the system-prompt breakpoint (everything after the prefix at the plain input rate), from the same usage: rev_total $0.0302 vs $0.0299 actual; na_gross_retention $0.0284 vs $0.0240; debt_instruments $0.1037 vs $0.0588. A two-call question (search, then answer) would lose a little; none occurred. Automatic caching stays on.
-- **The token budget as defined binds early.** It sums input, cached input and output over calls, and each call resends the conversation, so it grows roughly with the square of the number of turns. debt_instruments passed 30,000 after its fifth call (cumulative 43,036) and its last tool request was refused; the forced answer was still complete. Effective cost was about $1.0 to $1.7 per million budget tokens. **Default raised to 100,000** (owner's decision, 2026-11-21): none of the three questions would have reached it, the six-call limit binds first, and at the measured rate it caps a question at about $0.10 to $0.17. To re-check on the increment 5 spot check, since three questions are not a distribution.
+- **The token budget as defined binds early.** It sums input, cached input and output over calls, and each call resends the conversation, so it grows roughly with the square of the number of turns. debt_instruments passed 30,000 after its fifth call (cumulative 43,036) and its last tool request was refused; the forced answer was still complete. Effective cost was about $1.0 to $1.7 per million budget tokens. **Default raised to 100,000** (2026-11-21): none of the three questions would have reached it, the six-call limit binds first, and at the measured rate it caps a question at about $0.10 to $0.17. Re-checked on the increment 5 spot check and the 80-item run, since three questions are not a distribution (both below).
 - **Behaviour worth watching.** The model made one tool call per turn throughout, never several, despite the prompt's advice. It opened two of three questions with `list_filings`, spending a turn on it. It passed `topics` once as a bare string, which the tool accepts. No question cited a chunk it had not been shown.
 
 ### Found in increment 5 (2026-11-21; paid, $0.177)
@@ -350,7 +354,7 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 
 **Subset.** 20 items drawn at random, stratified by company and grade (seed 20261121; `golden/agent-subset-20.txt`). Agent 19/20, the recorded pipeline run 20/20 on the same items (by chance none of the pipeline's five misses was drawn). The one miss, RPD:rev_customers, cited the press release's "over 11,500 customers" instead of the 10-Q's 11,772, which the same prompt had found in the increment 5 spot check.
 
-**Full run.** `./fr eval --mode agent --full` on all 80 BILL and RPD items (the owner approved it and `FILINGROOM_MAX_USD=4` for that one command). Compared with the recorded pipeline run `results/2026-09-27_1616_recency.json` by `./fr compare` (`results/agent/2026-11-21_1047_agent80_compare.md`):
+**Full run.** `./fr eval --mode agent --full` on all 80 BILL and RPD items (run with `FILINGROOM_MAX_USD=4` for that one command, above the default $3 cap). Compared with the recorded pipeline run `results/2026-09-27_1616_recency.json` by `./fr compare` (`results/agent/2026-11-21_1047_agent80_compare.md`):
 
 | Metric | Pipeline (recorded 2026-09-27) | Agent mode (2026-11-21) |
 |---|---|---|
@@ -381,7 +385,7 @@ Three BILL questions through `agent.answer_question` and `llm.complete_tools`, l
 
 ### The held-out run on BOX (2026-11-21; paid, $1.43; build total $5.41)
 
-The owner approved it in the advisor session ("Yes, run BOX"), and the advisor ran it in this checkout, once, with `prompts/agent.md` as frozen at commit `62d729c` and the default budgets:
+Run once, with `prompts/agent.md` as frozen at commit `62d729c` and the default budgets:
 
 `./fr eval --mode agent --final --companies BOX --full --label HOLDOUT-box --note "held-out company, first and only agent-mode run; prompts/agent.md and budgets unchanged since the 80-item tune-set run"`
 
