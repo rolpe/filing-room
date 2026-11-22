@@ -156,9 +156,11 @@ Caveats: each pipeline run is from September and each agent run from November, s
 
 **When each mode is the better tool.** The pipeline is cheaper, faster, and best when the question is known in advance and someone has written down where its answer lives, which is the 39-question screen. Agent mode earns its cost when the first search misses: across both sets it turned five of the pipeline's eight false "not found" answers into correct ones. My hypothesis, not measured here, is that it helps most on ad hoc questions, which have no hand-tuned search hints. The app still uses the pipeline; agent mode is CLI-only. The experiment cost $5.41 in API usage, including tests of the loop and the held-out run. The design, every decision and what each step found are in `PLAN_AGENT.md`.
 
+**Hybrid mode: the pipeline first, agent mode only when it comes back empty.** `--mode hybrid` (CLI only) answers with the pipeline and, only when that answer is "not found" or has no verified quote, asks the same question again in agent mode; the agent's answer replaces it unless the agent fails. Simulated from the four recorded runs above, not run live: 112 of 117 right, the same as agent mode, against the pipeline's 108 (4 better, 0 worse, sign test p = 0.125), at 1.30 times the pipeline's cost per question and 1.37 times its mean time, against 1.22 and 1.74 for agent mode. 20 of 120 questions escalated, and on the 12 questions the filings don't answer the agent also said "not found" every time. It can't fix a wrong answer the pipeline gives as answered, which is why it misses two items agent mode got right. The rule was chosen after seeing both modes' results, Box included, so this is an in-sample estimate, not a held-out one. Its evals are written to `results/agent/` and `CHANGELOG-agent-evals.md`, like agent mode's.
+
 ### What I'd do next
 
-1. **Second-chance retrieval on "not found"**: when the model abstains, let it write its own search query and try again. Targets the one real weakness (3 of 4 held-out misses). Agent mode, above, tested a general version of this: it recovered 5 of the pipeline's 8 false "not found" answers across the tuning set and Box, at higher cost and with one new premature-stop failure. A narrower version, used only after the pipeline says "not found", would keep the pipeline's cost on the other answers.
+1. **Second-chance retrieval on "not found"**: when the model abstains, let it write its own search query and try again. Targets the one real weakness (3 of 4 held-out misses). Agent mode, above, tested a general version of this: it recovered 5 of the pipeline's 8 false "not found" answers across the tuning set and Box, at higher cost and with one new premature-stop failure. A narrower version, used only after the pipeline says "not found", would keep the pipeline's cost on the other answers. That version is now built as hybrid mode (above), simulated but not yet run live.
 2. **Answer prompt v2**: cite a quote for every fact in the answer (4 tuning answers were only partly supported), don't add unrequested comparisons, and answer "none/$0" when the filings show it instead of "not found".
 3. **Grade the prose, not just the number**, so "right value, wrong direction" errors fail the checklist eval rather than surfacing only in the memo.
 4. **Batch API for evals** (50% cheaper; evals don't need instant answers).
@@ -180,9 +182,13 @@ Fetching, parsing and indexing are free; `ask`, `run`, `eval` and `memo` call th
 ./fr ask BILL rev_total --mode agent          # one question, prints every tool call (~$0.03)
 ./fr eval --mode agent --ids @golden/agent-subset-20.txt --label x   # graded subset -> results/agent/ (~$0.80)
 ./fr compare results/<pipeline run>.json results/agent/<agent run>.json   # free: side by side, with intervals
+
+# hybrid mode (CLI only): the pipeline first, agent mode only on "not found" or no verified quote
+./fr ask BILL rev_international --mode hybrid   # ~$0.02, or ~$0.07 when it escalates
+./fr eval --mode hybrid --ids @golden/agent-subset-20.txt --label x  # graded subset -> results/agent/ (~$0.70)
 ```
 
-Agent-mode budgets: `--max-steps` (model calls, default 6), `--max-tool-calls` (8), `--max-tokens-per-question` (100,000), `--repair` (one retry when no quote verifies; off). A full 80-item agent eval costs about $2.90 with grading and needs `--full` and a `FILINGROOM_MAX_USD` above $3.
+Agent-mode budgets: `--max-steps` (model calls, default 6), `--max-tool-calls` (8), `--max-tokens-per-question` (100,000), `--repair` (one retry when no quote verifies; off). The same flags set hybrid mode's agent step. A full 80-item agent eval costs about $2.90 with grading and needs `--full` and a `FILINGROOM_MAX_USD` above $3; a full hybrid eval also needs `--full`.
 
 ## Layout
 
@@ -190,12 +196,13 @@ Agent-mode budgets: `--max-steps` (model calls, default 6), `--max-tool-calls` (
 web/                       the app (React + TypeScript); ./fr ui serves web/dist
 filingroom/                edgar, parse, index, answer, memo (engine); present, findings, financials, store, server (app)
 filingroom/agent/          agent mode: tools.py (three read-only tools), graph.py (the LangGraph loop), prompts.py
+filingroom/hybrid.py       hybrid mode: the pipeline, then agent mode on its non-answers
 checklist/checklist.json   the 40 questions (39 shown in the app), with labels and groups
 prompts/                   answer, memo, judge and presentation prompts; agent.md and agent_notes.md for agent mode
 tests/                     stdlib unit tests for the app's pure functions
 golden/, results/          eval harness: golden answers and one file per eval run
 CHANGELOG-evals.md         one line per eval run: what changed, what moved
-results/agent/             agent-mode eval runs and comparisons, with CHANGELOG-agent-evals.md (kept apart from the pipeline's history)
+results/agent/             agent- and hybrid-mode eval runs and comparisons, with CHANGELOG-agent-evals.md (kept apart from the pipeline's history)
 PLAN_AGENT.md              agent mode's design, decisions, and what each build step found
 docs/mockups/              approved visual mockups
 ```

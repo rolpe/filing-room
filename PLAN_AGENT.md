@@ -403,3 +403,24 @@ Cost $1.43 ($1.18 answering, $0.25 judging). Compared with the pipeline's held-o
 - **Citation support:** the tuning set's weaker support for agent answers (62/70 fully supported, against 63/67) did not show on BOX (33/34, against 33/33). Both are recorded; the difference is not explained.
 - **Both sets together:** pipeline 108/117, agent mode 112/117; 6 flips better and 2 worse, exact two-sided sign test p = 0.29 (`evalstats.sign_test(6, 2)`). The same direction on both sets and a larger gap on the held-out company, mostly from questions where the pipeline's one search missed, but still short of a detectable accuracy difference.
 - **BOX is now used** for agent mode: a later change to `prompts/agent.md` or the budgets cannot be validated on it as a held-out company again.
+
+### Hybrid mode: the pipeline first, agent mode on its non-answers (2026-11-22; simulated, free)
+
+**The rule.** `--mode hybrid` (`filingroom/hybrid.py`, CLI only) answers each question with the pipeline, called exactly as in pipeline mode. If that row's final status, after quote verification, is `not_found` or `unsupported`, agent mode answers the same question with the same meter and the agent budget flags, and its row replaces the pipeline's unless it is an `error` (then the pipeline's row is kept). A pipeline `error` is not escalated. The agent package, and langgraph with it, is imported only at the point of escalation (subprocess test). Rows have every pipeline key plus `mode: "hybrid"` and `hybrid` (escalated, the pipeline's status and time, and when escalated the agent's status and time and which answer was used); escalated rows also keep the agent's `agent` block, and their `seconds` is both steps. Evals follow the agent-mode rules: `--ids` or `--full`, results in `results/agent/` and `CHANGELOG-agent-evals.md`, BOX only with `--final`.
+
+**Simulated result, not a live run.** From the recorded files `results/2026-09-27_1616_recency.json` and `results/agent/2026-11-21_1047_agent80.json` (BILL and RPD) and `results/2026-09-27_1635_HOLDOUT-box.json` and `results/agent/2026-11-21_1100_HOLDOUT-box.json` (BOX), taking the pipeline's row unless its status was `not_found`, in which case the agent's row. 117 graded items across the three companies:
+
+| Metric | Pipeline | Agent mode | Hybrid (simulated) |
+|---|---|---|---|
+| Correct | 108 | 112 | 112 |
+| "Not found" graded wrong | 6 | 2 | 2 |
+| Citation support (judge: yes, of answered) | 96/100 | 95/104 | 101/105 |
+| Answer cost per question, against the pipeline | 1.00x | 1.22x | 1.30x |
+| Mean latency, against the pipeline | 1.00x | 1.74x | 1.37x |
+
+- **Against the pipeline: 4 better, 0 worse** (BILL:rev_international, RPD:comp_sayonpay, BOX:bs_cash, BOX:rev_customers); exact sign test p = 0.125, so not a detectable difference.
+- **Escalations: 20 of 120 questions** (6 BILL, 7 RPD, 7 BOX), all pipeline `not_found`. No pipeline row was `unsupported` or `error`, so that part of the trigger is unmeasured.
+- **Abstention held.** On the 12 items where not disclosed is the right answer, the agent also returned not found on all 12.
+- **Cost.** Not-found questions are the agent's most expensive (about $0.043 each, against its $0.030 average), so 20 escalations in 120 questions cost more than their share suggests: 1.30x the pipeline, roughly $0.29 extra per company.
+- **What it cannot fix.** A wrong answer the pipeline returns as answered is never escalated, which is why the hybrid misses RPD:gov_activist and BOX:gov_structure, both of which agent mode got right.
+- **Caveats.** The rule was chosen after both modes' results, BOX included, had been seen, so this is an in-sample estimate and not a held-out result. Each escalated item reuses one agent sample. The recorded agent costs assume the shared prompt prefix was cached; with only 6 or 7 escalations per company, the cost of writing that cache is spread over fewer questions, so the real cost could be slightly higher. The latencies combine runs from September and November. Hybrid mode itself has not been run live.

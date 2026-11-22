@@ -32,15 +32,20 @@ def _effort(e: str) -> str | None:
 
 
 def _mode_args(p):
+    from . import modes
     from .agent import DEFAULT_MAX_MODEL_CALLS, DEFAULT_MAX_TOKENS, DEFAULT_MAX_TOOL_CALLS  # no framework import
-    p.add_argument("--mode", choices=["pipeline", "agent"], default="pipeline",
-                   help="pipeline: code retrieves, one model call; agent: the model searches with tools in a loop")
+    p.add_argument("--mode", choices=modes.MODES, default="pipeline",
+                   help="pipeline: code retrieves, one model call; agent: the model searches with tools in a loop; "
+                        "hybrid: the pipeline first, then agent mode only when the pipeline's answer is not_found "
+                        "or unsupported (the agent flags below apply to that second step)")
     p.add_argument("--max-steps", type=int, default=DEFAULT_MAX_MODEL_CALLS,
-                   help="agent mode: model calls per question, the final answer included")
-    p.add_argument("--max-tool-calls", type=int, default=DEFAULT_MAX_TOOL_CALLS, help="agent mode: per question")
+                   help="agent and hybrid modes: model calls per agent question, the final answer included")
+    p.add_argument("--max-tool-calls", type=int, default=DEFAULT_MAX_TOOL_CALLS,
+                   help="agent and hybrid modes: per agent question")
     p.add_argument("--max-tokens-per-question", type=int, default=DEFAULT_MAX_TOKENS,
-                   help="agent mode: exploration budget (input + cached input + output over all calls)")
-    p.add_argument("--repair", action="store_true", help="agent mode: one retry when no quote verifies")
+                   help="agent and hybrid modes: exploration budget (input + cached input + output over all calls)")
+    p.add_argument("--repair", action="store_true",
+                   help="agent and hybrid modes: one agent retry when no quote verifies")
 
 
 def _agent_opts(a) -> dict:
@@ -56,9 +61,24 @@ def _answer_fn(a):
 
 def _agent_line(r: dict) -> str:
     ag = r["agent"]
+    seconds = r["hybrid"]["agent_seconds"] if "hybrid" in r else r["seconds"]
     return (f"agent: {ag['model_calls']} model calls, {ag['tool_calls']} tool calls, {ag['tokens']:,} tokens, "
-            f"stop={ag['stop']}, ${ag['usd']:.4f}, {r['seconds']} s, {len(r['retrieved'])} chunks seen"
+            f"stop={ag['stop']}, ${ag['usd']:.4f}, {seconds} s, {len(r['retrieved'])} chunks seen"
             + (f", verified quotes from unseen chunks: {ag['cited_unseen']}" if ag["cited_unseen"] else ""))
+
+
+def _uses_agent(r: dict) -> bool:
+    """The row's answer came from an agent loop, so its trace and `retrieved` describe that loop."""
+    return r.get("mode") == "agent" or r.get("hybrid", {}).get("used") == "agent"
+
+
+def _hybrid_line(r: dict) -> str:
+    h = r["hybrid"]
+    line = f"hybrid: pipeline {h['pipeline_status']} in {h['pipeline_seconds']} s"
+    if not h["escalated"]:
+        return line + ", not escalated"
+    return (line + f"; agent mode {h['agent_status']} in {h['agent_seconds']} s; kept the {h['used']} answer"
+            + (f" (agent error: {h['agent_error']})" if h.get("agent_error") else ""))
 
 
 def main() -> None:
@@ -115,9 +135,9 @@ def main() -> None:
     p.add_argument("--no-judge", action="store_true")
     p.add_argument("--workers", type=int, default=6)
     p.add_argument("--only", help="comma-separated golden ids to run (for debugging; not logged)")
-    p.add_argument("--ids", help="agent mode: comma-separated golden ids (or @file, one per line) to run, grade and "
-                                 "record in results/agent/ (a measured subset)")
-    p.add_argument("--full", action="store_true", help="agent mode: allow a full eval without --ids")
+    p.add_argument("--ids", help="agent and hybrid modes: comma-separated golden ids (or @file, one per line) to run, "
+                                 "grade and record in results/agent/ (a measured subset)")
+    p.add_argument("--full", action="store_true", help="agent and hybrid modes: allow a full eval without --ids")
     p.add_argument("--companies", help="comma-separated tickers (default: tuning set, or all with --final)")
     _model_args(p)
     _mode_args(p)
@@ -179,13 +199,16 @@ def main() -> None:
                           expand=a.expand)
         print(json.dumps({k: r[k] for k in ("status", "answer", "value", "unit", "period", "confidence",
                                             "citations", "error")}, indent=2))
-        if r.get("mode") == "agent":
+        if _uses_agent(r):
             ag = r["agent"]
             for t_ in ag["trace"]:
                 print(f"  turn {t_['turn']}: {t_['tool']} {json.dumps(t_['input'])} -> "
                       f"{len(t_['shown'])} new, {len(t_['refs']) - len(t_['shown'])} already shown"
                       f"{' (error)' if t_['error'] else ''}")
             print(_agent_line(r))
+        if "hybrid" in r:
+            print(_hybrid_line(r))
+        if "agent" in r:
             print(f"usage: {json.dumps(meter.summary()['by_model'])}")
         print(f"cost ${meter.cost():.4f}")
 
@@ -198,7 +221,12 @@ def main() -> None:
         data = json.loads(path.read_text())
         counts = {s: sum(r["status"] == s for r in data["answers"]) for s in ("answered", "not_found", "unsupported", "error")}
         nc = data["meta"]["number_check"]
-        print(f"{counts} · numbers matching SEC data: {nc['matched']}/{nc['checked']} · ${meter.cost():.2f} -> {path.with_suffix('.md').relative_to(config.ROOT)}")
+        esc = ""
+        if a.mode == "hybrid":
+            hy = [r["hybrid"] for r in data["answers"]]
+            esc = (f" · escalated to agent mode: {sum(h['escalated'] for h in hy)} "
+                   f"(agent answer kept for {sum(h.get('used') == 'agent' for h in hy)})")
+        print(f"{counts}{esc} · numbers matching SEC data: {nc['matched']}/{nc['checked']} · ${meter.cost():.2f} -> {path.with_suffix('.md').relative_to(config.ROOT)}")
 
     elif a.cmd == "memo":
         t = _tickers(a.ticker, a.final)[0]
@@ -231,13 +259,16 @@ def main() -> None:
                        model=a.model, effort=_effort(a.effort), k=a.k, expand=a.expand)
                 print(json.dumps({"id": item["id"], "expected": item["expected"], "status": r["status"],
                                   "answer": r["answer"], "value": r["value"], "citations": r["citations"],
-                                  "retrieved": r["retrieved"], **({"agent": r["agent"]} if "agent" in r else {})},
+                                  "retrieved": r["retrieved"], **({"agent": r["agent"]} if "agent" in r else {}),
+                                  **({"hybrid": r["hybrid"]} if "hybrid" in r else {})},
                                  indent=2))
-                if "agent" in r:
+                if _uses_agent(r):
                     print(_agent_line(r))
+                if "hybrid" in r:
+                    print(_hybrid_line(r))
             print(f"cost ${meter.cost():.4f}")
             return
-        if a.mode == "agent":
+        if a.mode in ("agent", "hybrid"):  # measured runs kept apart from the pipeline's history
             ids = None
             if a.ids:
                 from pathlib import Path
@@ -246,15 +277,18 @@ def main() -> None:
                 known = {i["id"] for i in golden.load(tickers)}
                 if ids - known:
                     sys.exit(f"Not golden ids for {', '.join(tickers)}: {', '.join(sorted(ids - known))}")
-            elif not a.full:
+            elif not a.full and a.mode == "agent":
                 sys.exit("A full agent-mode eval (80 items) is estimated at $4-6, above the $3 per-command cap. "
                          "Run a subset with --ids, or raise FILINGROOM_MAX_USD and pass --full.")
+            elif not a.full:
+                sys.exit("A full hybrid-mode eval (80 items) is estimated at about $3 with grading, at the $3 "
+                         "per-command cap. Run a subset with --ids, or raise FILINGROOM_MAX_USD and pass --full.")
             evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model,
                          label=a.label, note=a.note, workers=a.workers, use_judge=not a.no_judge, only=ids,
-                         mode="agent", agent_opts=_agent_opts(a))
+                         mode=a.mode, agent_opts=_agent_opts(a))
             return
         if a.ids or a.full:
-            sys.exit("--ids and --full are for --mode agent.")
+            sys.exit("--ids and --full are for --mode agent or hybrid.")
         evaluate.run(tickers, a.model, _effort(a.effort), a.k, a.expand, judge_model=a.judge_model, label=a.label,
                      note=a.note, workers=a.workers, use_judge=not a.no_judge)
 

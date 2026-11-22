@@ -132,9 +132,11 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
 
     mode="agent" answers through agent mode (agent_opts: its budget settings) and writes to results/agent/ and
     CHANGELOG-agent-evals.md instead; the result records the mode, the settings, the ids run, and agent metrics.
+    mode="hybrid" (the pipeline, then agent mode on its non-answers) follows the same rules as agent mode, and its
+    agent metrics also count the escalated questions; k and expand apply to its pipeline step.
     """
     ask = modes.answerer(mode, **(agent_opts or {}))
-    agent = mode != "pipeline"
+    agent = mode != "pipeline"  # agent and hybrid runs: results/agent/ and their own changelog
     t0 = time.time()
     items = golden.load(tickers)
     if only is not None:
@@ -142,7 +144,10 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
     qs = checklist.by_id()
     ixs = {t: Index(t) for t in tickers}
     answer_meter, judge_meter = llm.CostMeter(), llm.CostMeter()
-    if agent:
+    if mode == "hybrid":
+        print(f"eval: {len(items)} golden items over {', '.join(tickers)} | hybrid mode, model={model} "
+              f"effort={effort} k={k} expand={expand}, agent step {agent_opts or {}}")
+    elif agent:
         k = expand = None  # the agent chooses its own searches
         print(f"eval: {len(items)} golden items over {', '.join(tickers)} | {mode} mode, model={model} "
               f"effort={effort} {agent_opts or {}}")
@@ -183,7 +188,7 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
     # Save the paid-for answers before anything else can fail.
     rows_dir = out_dir or config.RUNS
     rows_dir.mkdir(parents=True, exist_ok=True)
-    (rows_dir / ("last_agent_eval_rows.json" if agent else "last_eval_rows.json")).write_text(json.dumps(rows))
+    (rows_dir / (f"last_{mode}_eval_rows.json" if agent else "last_eval_rows.json")).write_text(json.dumps(rows))
     m = metrics(rows)
     m["cost_usd"] = {"answer": round(answer_meter.cost(), 4), "judge": round(judge_meter.cost(), 4)}
     m["cost_per_company_usd"] = round(answer_meter.cost() / len(tickers), 4)
@@ -197,7 +202,7 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
         result.update(mode=mode, agent_opts={k_: v for k_, v in (agent_opts or {}).items() if k_ != "call_model"},
                       only=sorted(only) if only is not None else None)
         m["agent"] = agent_metrics(rows)
-        prev = latest_result(tickers, directory=AGENT_RESULTS, ids={r["id"] for r in rows})
+        prev = latest_result(tickers, directory=AGENT_RESULTS, ids={r["id"] for r in rows}, mode=mode)
     else:
         prev = latest_result(tickers)
     res_dir = out_dir or (AGENT_RESULTS if agent else config.RESULTS)
@@ -213,13 +218,16 @@ def run(tickers: list[str], model: str, effort: str | None, k: int, expand: int 
     return result
 
 
-def latest_result(tickers: list[str], directory=None, ids: set[str] | None = None) -> dict | None:
+def latest_result(tickers: list[str], directory=None, ids: set[str] | None = None,
+                  mode: str | None = None) -> dict | None:
     """Newest results file for these tickers (in results/ unless `directory`); with `ids`, only one that ran
-    exactly those golden items (agent subsets are compared with the same subset)."""
+    exactly those golden items (agent subsets are compared with the same subset); with `mode`, only one from that
+    mode (results/agent/ holds agent and hybrid runs)."""
     for p in sorted((directory or config.RESULTS).glob("*.json"), reverse=True):
         r = json.loads(p.read_text())
         if "rows" in r and sorted(r["tickers"]) == sorted(tickers):  # skip memo claim-check files
-            if ids is None or {row["id"] for row in r["rows"]} == ids:
+            if (ids is None or {row["id"] for row in r["rows"]} == ids) and \
+                    (mode is None or r.get("mode", "pipeline") == mode):
                 return r
     return None
 
@@ -241,6 +249,10 @@ def report_md(r: dict, prev: dict | None, brief: bool = False) -> str:
              f"judge `{r['judge_model']}`", ""]
     if r["note"]:
         lines += [f"Change: {r['note']}", ""]
+    if r.get("mode") == "hybrid":
+        a = m.get("agent", {})
+        lines += [f"Hybrid mode: {a.get('escalated', 0)} of {m['n_items']} questions escalated to agent mode; "
+                  f"the agent's answer was kept for {a.get('used_agent', 0)}.", ""]
     lines += ["| Metric | This run | Previous |", "|---|---|---|"]
     for key, name in keys:
         lines.append(f"| {name} | {_fmt(m[key])} | {_fmt(pm.get(key))} |")
@@ -304,11 +316,18 @@ def latency(rows: list[dict]) -> dict:
 
 
 def agent_metrics(rows: list[dict]) -> dict:
-    """Per-question loop statistics from the rows' `agent` blocks (pipeline rows: 1 model call, 0 tool calls)."""
+    """Per-question loop statistics from the rows' `agent` blocks (pipeline rows: 1 model call, 0 tool calls).
+
+    In a hybrid run only escalated rows have an `agent` block, so the loop averages (calls, tokens, agent cost) are
+    per escalated question; `escalated` counts those rows and `used_agent` the ones that kept the agent's answer.
+    Latency is over all rows."""
     ag = [r["agent"] for r in rows if "agent" in r]
+    hy = [r["hybrid"] for r in rows if "hybrid" in r]
+    extra = {"escalated": sum(h["escalated"] for h in hy),
+             "used_agent": sum(h.get("used") == "agent" for h in hy)} if hy else {}
     n = len(ag)
     if not n:
-        return {"n": 0}
+        return {"n": 0, **extra}
     stops: dict[str, int] = {}
     for a in ag:
         stops[a["stop"]] = stops.get(a["stop"], 0) + 1
@@ -324,6 +343,7 @@ def agent_metrics(rows: list[dict]) -> dict:
         "repairs": sum(a.get("repairs", 0) for a in ag),
         "cited_unseen": sum(len(a.get("cited_unseen", [])) for a in ag),
         "latency_s": latency(rows),
+        **extra,
     }
 
 
@@ -335,12 +355,22 @@ def append_agent_changelog(r: dict) -> None:
             "The pipeline's runs are in CHANGELOG-evals.md.\n\n"
             "| Run | Companies | Items | Change | Acc % | Unsupported % | Abstain P/R | Calls/tools per q | "
             "Hit limit | $ per q | $ answer/judge |\n|---|---|---|---|---|---|---|---|---|---|---|\n")
+    items = f"{m['n_items']}{' (subset)' if r.get('only') else ''}"
+    settings = f"{r['model']}, {r['effort']}, "
+    calls = f"{a.get('model_calls_mean')}/{a.get('tool_calls_mean')}"
+    hit, usd_q = a.get("hit_limit"), a.get("usd_per_question")
+    if r.get("mode") == "hybrid":
+        # loop figures are per escalated question; cost per question is the whole run's, both steps included
+        items += f", {a['escalated']} escalated"
+        settings = f"hybrid, {settings}k={r['k']}, expand={r['expand']}, agent step "
+        calls = f"{calls} (escalated)" if a["n"] else "-"
+        hit = a.get("hit_limit", 0)
+        usd_q = round(m["cost_usd"]["answer"] / m["n_items"], 4) if m["n_items"] else "-"
     with open(AGENT_CHANGELOG, "a") as f:
-        f.write(f"| {r['timestamp']} {r['label']} | {','.join(r['tickers'])} | {m['n_items']}"
-                f"{' (subset)' if r.get('only') else ''} | {r['note'] or '-'} ({r['model']}, {r['effort']}, "
-                f"{json.dumps(r.get('agent_opts') or {})}) | {_fmt(m['accuracy'])} | {_fmt(m['unsupported_claim_rate'])} | "
-                f"{_fmt(m['abstention_precision'])}/{_fmt(m['abstention_recall'])} | "
-                f"{a['model_calls_mean']}/{a['tool_calls_mean']} | {a['hit_limit']} | {a['usd_per_question']} | "
+        f.write(f"| {r['timestamp']} {r['label']} | {','.join(r['tickers'])} | {items} | {r['note'] or '-'} "
+                f"({settings}{json.dumps(r.get('agent_opts') or {})}) | {_fmt(m['accuracy'])} | "
+                f"{_fmt(m['unsupported_claim_rate'])} | {_fmt(m['abstention_precision'])}/"
+                f"{_fmt(m['abstention_recall'])} | {calls} | {hit} | {usd_q} | "
                 f"{m['cost_usd']['answer']}/{m['cost_usd']['judge']} |\n")
 
 
@@ -364,7 +394,13 @@ def compare(base: dict, other: dict) -> dict:
         tr = evalstats.trust(rows, gold, devtools._docs_by_ticker(tickers))
         tr.pop("statuses")
         ag = agent_metrics(rows)
-        if ag["n"]:
+        if res.get("mode") == "hybrid":
+            # Only escalated rows carry an agent cost, so the per-question cost is the run's meter (both steps)
+            # over its rows; calls and tools are the agent step's, per escalated question (None if none escalated).
+            usd_q = round(res["metrics"]["cost_usd"]["answer"] / max(len(res["rows"]), 1), 4)
+            usd_note = f"run average over its {len(res['rows'])} items, both steps"
+            calls, tools_, hit = ag.get("model_calls_mean"), ag.get("tool_calls_mean"), ag.get("hit_limit", 0)
+        elif ag["n"]:
             usd_q, usd_note = round(sum(r["agent"]["usd"] for r in rows) / len(rows), 4), "sum over these items"
             calls, tools_, hit = ag["model_calls_mean"], ag["tool_calls_mean"], ag["hit_limit"]
         else:
@@ -378,7 +414,7 @@ def compare(base: dict, other: dict) -> dict:
             "partial": [r["id"] for r in rows if r.get("model_status") == "answered" and r.get("supported") in ("partial", "no")],
             "abstention_precision": c["abstention_precision"], "abstention_recall": c["abstention_recall"],
             "trust": tr, "usd_per_question": usd_q, "usd_note": usd_note, "latency": latency(rows),
-            "model_calls": calls, "tool_calls": tools_, "hit_limit": hit, "agent": ag}
+            "model_calls": calls, "tool_calls": tools_, "hit_limit": hit, "agent": ag, "n": len(rows)}
     b = {r["id"]: r.get("correct") for r in base["rows"]}
     o = {r["id"]: r.get("correct") for r in other["rows"]}
     better = [i for i in ids if o[i] is True and b[i] is False]
@@ -399,6 +435,14 @@ def _lat(x: dict) -> str:
     return " / ".join("–" if x[k] is None else str(x[k]) for k in ("mean", "median", "p90"))
 
 
+def _calls(s: dict) -> str:
+    if s["mode"] != "hybrid":
+        return f"{s['model_calls']} / {s['tool_calls']}"
+    if not s["agent"]["n"]:
+        return "1 / 0 (none escalated)"
+    return f"1 / 0, plus {s['model_calls']} / {s['tool_calls']} per escalated question"
+
+
 def compare_md(c: dict) -> str:
     b, o = c["sides"]["base"], c["sides"]["other"]
     rows = [("Accuracy", _rate(b["accuracy"]), _rate(o["accuracy"]))]
@@ -413,9 +457,12 @@ def compare_md(c: dict) -> str:
              ("Answer cost per question ($)", f"{b['usd_per_question']} ({b['usd_note']})",
               f"{o['usd_per_question']} ({o['usd_note']})"),
              ("Latency mean / median / p90 (s)", _lat(b["latency"]), _lat(o["latency"])),
-             ("Model calls / tool calls per question", f"{b['model_calls']} / {b['tool_calls']}",
-              f"{o['model_calls']} / {o['tool_calls']}"),
+             ("Model calls / tool calls per question", _calls(b), _calls(o)),
              ("Questions that hit a limit", str(b["hit_limit"]), str(o["hit_limit"]))]
+    if "hybrid" in (b["mode"], o["mode"]):
+        esc = (lambda s: f"{s['agent'].get('escalated', 0)} of {s['n']} (agent answer kept for "
+               f"{s['agent'].get('used_agent', 0)})" if s["mode"] == "hybrid" else "–")
+        rows.append(("Questions escalated to agent mode", esc(b), esc(o)))
     lines = [f"# Comparison on {c['n']} paired items", "",
              f"Base: {b['label']} ({b['mode']}) · Other: {o['label']} ({o['mode']})", "",
              "| Metric | Base | Other |", "|---|---|---|"] + [f"| {a} | {x} | {y} |" for a, x, y in rows]

@@ -146,8 +146,8 @@ def run_checklist(ticker: str, meter: llm.CostMeter, *, model: str = answer.DEFA
 
     With `partial` (a .jsonl path), each answer is appended as it completes and answers already there are reused,
     so a resumed run doesn't pay twice. Each question is answered independently, so reuse doesn't change any input.
-    Only answers from the same mode are reused. `mode="agent"` answers through agent mode (CLI only for now); its
-    run files are named <TICKER>_<stamp>_agent and record the mode and agent settings in `meta`.
+    Only answers from the same mode are reused. `mode="agent"` or `"hybrid"` answers through that mode (CLI only
+    for now); its run files are named <TICKER>_<stamp>_<mode> and record the mode and agent settings in `meta`.
     Returns the json path."""
     ask = modes.answerer(mode, **(agent_opts or {}))
     ix = index.Index(ticker)
