@@ -8,7 +8,7 @@ A first-look screening tool for US public companies, for take-private deal teams
 - **A screening memo** whose factual sentences cite findings, with sentences an automatic claim check can't support marked. Exports to Markdown and prints cleanly.
 - **Q&A** per company: follow-up questions answered only from the filings, with the same citations.
 - **Notes, flags and review marks** on findings, and a CSV export of everything with source URLs.
-- **Evaluation** (developer tools, for demos): every recorded eval run against the pass bar with 95% intervals and a trust headline (how often the app's own Verified status was wrong), each graded item with its expected answer and the filing passage, a review screen for checking the hand-built answer key against its source, and a form to start a run or a free retrieval check. One switch hides it: `FILINGROOM_DEV_TOOLS=0`.
+- **Evaluation** (developer tools): every recorded eval run against the pass bar with 95% intervals and a trust headline (how often the app's own Verified status was wrong), each graded item with its expected answer and the filing passage, a review screen for checking the hand-built answer key against its source, and a form to start a run or a free retrieval check. One switch hides it: `FILINGROOM_DEV_TOOLS=0`.
 
 Sources: the last two 10-Ks, last four 10-Qs, latest proxy statement and latest earnings release, from SEC EDGAR. Nothing else.
 
